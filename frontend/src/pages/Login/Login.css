@@ -90,3 +90,65 @@
 .link-button:hover {
   color: rgb(214, 127, 13); /* Fica laranja ao passar o mouse */
 }
+/* Estilos para o Modal Customizado */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  max-width: 350px;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  font-size: 1.5rem; /* Para aumentar o tamanho do emoji */
+}
+
+.modal-content h3 {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.modal-content p {
+  font-size: 1rem;
+  color: #666;
+  margin: 0;
+}
+
+.texto-erro {
+  color: #d32f2f;
+}
+
+.texto-sucesso {
+  color: #2e7d32;
+}
+
+.modal-button {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background-color: rgb(214, 127, 13);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.modal-button:hover {
+  opacity: 0.9;
+}

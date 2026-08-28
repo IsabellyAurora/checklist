@@ -8,33 +8,39 @@ export default function Login() {
   const [senha, setSenha] = useState('');
   const [esqueciSenha, setEsqueciSenha] = useState(false); 
   
+  // Estado para controlar o nosso pop-up customizado
+  const [alerta, setAlerta] = useState({ visivel: false, tipo: '', titulo: '', mensagem: '' });
+  
   const navigate = useNavigate();
+
+  const mostrarAlerta = (tipo, titulo, mensagem) => {
+    setAlerta({ visivel: true, tipo, titulo, mensagem });
+  };
+
+  const fecharAlerta = () => {
+    setAlerta({ ...alerta, visivel: false });
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
     
     try {
-      // Faz a requisição POST para a rota de login do backend
       const resposta = await fetch('/api/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ usuario, senha })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome: usuario, senha })
       });
 
       if (resposta.ok) {
-        // Se o login der certo, converte a resposta e salva no localStorage
         const dadosDoUsuario = await resposta.json();
         localStorage.setItem('usuarioLogado', JSON.stringify(dadosDoUsuario));
         navigate('/home');
       } else {
-        // Se o backend retornar erro (ex: 401 Unauthorized)
-        alert('Usuário ou senha incorretos.');
+        mostrarAlerta('erro', 'Falha no login', 'Usuário ou senha incorretos.');
       }
     } catch (erro) {
       console.error('Erro no login:', erro);
-      alert('Erro ao conectar com o servidor. Verifique se o backend está rodando.');
+      mostrarAlerta('erro', 'Sem conexão', 'Erro ao conectar com o servidor. Verifique se o backend está rodando.');
     }
   };
 
@@ -42,26 +48,22 @@ export default function Login() {
     e.preventDefault();
     
     try {
-      // Faz a requisição POST para a rota de troca de senha
       const resposta = await fetch('/api/trocar-senha', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        // Envia o usuário e a senha nova. (Verifique com seu colega se ele espera a chave como "senha" ou "novaSenha" no JSON)
-        body: JSON.stringify({ usuario, senha }) 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome: usuario, senha }) 
       });
 
       if (resposta.ok) {
-        alert('Senha alterada com sucesso!');
-        setEsqueciSenha(false); // Volta para a tela de login
-        setSenha(''); // Limpa o campo de senha
+        mostrarAlerta('sucesso', 'Tudo certo!', 'Senha alterada com sucesso!');
+        setEsqueciSenha(false); 
+        setSenha(''); 
       } else {
-        alert('Erro ao alterar a senha. Verifique se o usuário está correto.');
+        mostrarAlerta('erro', 'Ops!', 'Erro ao alterar a senha. Verifique se o usuário está correto.');
       }
     } catch (erro) {
       console.error('Erro ao trocar senha:', erro);
-      alert('Erro ao conectar com o servidor. Verifique se o backend está rodando.');
+      mostrarAlerta('erro', 'Sem conexão', 'Erro ao conectar com o servidor. Verifique se o backend está rodando.');
     }
   };
 
@@ -69,7 +71,6 @@ export default function Login() {
     <div className="login-container">
       
       {!esqueciSenha ? (
-        
         <form onSubmit={handleLogin} className="login-form">
           <div className="logo-container">
             <img src={logo} alt="Logo da Empresa" className="login-logo" />
@@ -108,15 +109,13 @@ export default function Login() {
             className="link-button" 
             onClick={() => {
               setEsqueciSenha(true);
-              setSenha(''); // Limpa a senha ao mudar de tela
+              setSenha(''); 
             }}
           >
             Esqueci minha senha
           </button>
         </form>
-
       ) : (
-
         <form onSubmit={handleTrocarSenha} className="login-form">
           <div className="logo-container">
             <img src={logo} alt="Logo da Empresa" className="login-logo" />
@@ -155,13 +154,26 @@ export default function Login() {
             className="link-button" 
             onClick={() => {
               setEsqueciSenha(false);
-              setSenha(''); // Limpa a senha ao voltar
+              setSenha(''); 
             }}
           >
             Voltar para o Login
           </button>
         </form>
+      )}
 
+      {/* Renderização condicional do pop-up customizado */}
+      {alerta.visivel && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            {alerta.tipo === 'sucesso' ? '✅' : '⚠️'}
+            <h3 className={alerta.tipo === 'erro' ? 'texto-erro' : 'texto-sucesso'}>
+              {alerta.titulo}
+            </h3>
+            <p>{alerta.mensagem}</p>
+            <button className="modal-button" onClick={fecharAlerta}>OK</button>
+          </div>
+        </div>
       )}
 
     </div>
