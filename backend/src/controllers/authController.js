@@ -1,8 +1,6 @@
 const bcrypt = require('bcryptjs');
 const pool = require('../config/db');
-const asyncHandler = require('../middlewares/asyncHandler'); // Importado de middlewares
-
-// Restante do código permanece igual...
+const asyncHandler = require('../middlewares/asyncHandler');
 
 // POST /api/login
 const login = asyncHandler(async (req, res) => {
@@ -15,6 +13,7 @@ const login = asyncHandler(async (req, res) => {
     });
   }
 
+  // Busca na tabela usando os campos corretos
   const { rows } = await pool.query('SELECT * FROM usuario WHERE nome = $1', [nome]);
 
   if (rows.length === 0) {
@@ -25,6 +24,8 @@ const login = asyncHandler(async (req, res) => {
   }
 
   const usuario = rows[0];
+
+  // Compara o HASH Bcrypt
   const senhaValida = await bcrypt.compare(senha, usuario.senha);
 
   if (!senhaValida) {
@@ -34,6 +35,7 @@ const login = asyncHandler(async (req, res) => {
     });
   }
 
+  // Remove a senha do objeto de resposta
   const { senha: _, ...usuarioSemSenha } = usuario;
 
   return res.status(200).json({
@@ -56,7 +58,8 @@ const trocarSenha = asyncHandler(async (req, res) => {
     });
   }
 
-  const checkUser = await pool.query('SELECT id FROM usuario WHERE nome = $1', [nome]);
+  // Ajustado para verificar id_usuario
+  const checkUser = await pool.query('SELECT id_usuario FROM usuario WHERE nome = $1', [nome]);
 
   if (checkUser.rows.length === 0) {
     return res.status(404).json({
