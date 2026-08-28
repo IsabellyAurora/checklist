@@ -1,0 +1,13 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body, html, #root {
+  width: 100%;
+  min-height: 100vh;
+  background-color: white;
+  /* Esta linha restaura a fonte padrão do Vite */
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif; 
+}
