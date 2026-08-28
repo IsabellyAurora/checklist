@@ -6,42 +6,68 @@ import logo from '../../assets/image.png';
 export default function Login() {
   const [usuario, setUsuario] = useState('');
   const [senha, setSenha] = useState('');
-  // Novo estado para controlar qual tela mostrar
   const [esqueciSenha, setEsqueciSenha] = useState(false); 
   
   const navigate = useNavigate();
 
-const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     
-    // Simulação de resposta do Backend (Mock)
-    let dadosDoUsuario = {};
-    
-    if (usuario.toLowerCase() === 'admin') {
-      dadosDoUsuario = { nome: 'Administrador', role: 'admin' };
-    } else {
-      // Se não for admin, simula um usuário comum de um setor específico
-      dadosDoUsuario = { nome: usuario, role: 'user', setor: 'TI' };
-    }
+    try {
+      // Faz a requisição POST para a rota de login do backend
+      const resposta = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ usuario, senha })
+      });
 
-    // Salva os dados no navegador para a Home conseguir ler
-    localStorage.setItem('usuarioLogado', JSON.stringify(dadosDoUsuario));
-    
-    navigate('/home'); 
+      if (resposta.ok) {
+        // Se o login der certo, converte a resposta e salva no localStorage
+        const dadosDoUsuario = await resposta.json();
+        localStorage.setItem('usuarioLogado', JSON.stringify(dadosDoUsuario));
+        navigate('/home');
+      } else {
+        // Se o backend retornar erro (ex: 401 Unauthorized)
+        alert('Usuário ou senha incorretos.');
+      }
+    } catch (erro) {
+      console.error('Erro no login:', erro);
+      alert('Erro ao conectar com o servidor. Verifique se o backend está rodando.');
+    }
   };
 
-  const handleTrocarSenha = (e) => {
+  const handleTrocarSenha = async (e) => {
     e.preventDefault();
-    console.log('Senha alterada para o usuário:', usuario, '| Nova senha:', senha);
-    alert('Senha alterada com sucesso!');
-    setEsqueciSenha(false); // Volta para a tela de login original
-    setSenha(''); // Limpa o campo de senha
+    
+    try {
+      // Faz a requisição POST para a rota de troca de senha
+      const resposta = await fetch('/api/trocar-senha', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        // Envia o usuário e a senha nova. (Verifique com seu colega se ele espera a chave como "senha" ou "novaSenha" no JSON)
+        body: JSON.stringify({ usuario, senha }) 
+      });
+
+      if (resposta.ok) {
+        alert('Senha alterada com sucesso!');
+        setEsqueciSenha(false); // Volta para a tela de login
+        setSenha(''); // Limpa o campo de senha
+      } else {
+        alert('Erro ao alterar a senha. Verifique se o usuário está correto.');
+      }
+    } catch (erro) {
+      console.error('Erro ao trocar senha:', erro);
+      alert('Erro ao conectar com o servidor. Verifique se o backend está rodando.');
+    }
   };
 
   return (
     <div className="login-container">
       
-      {/* Condição: Se "esqueciSenha" for falso, mostra o Login. Se for verdadeiro, mostra a troca de senha */}
       {!esqueciSenha ? (
         
         <form onSubmit={handleLogin} className="login-form">
@@ -77,11 +103,13 @@ const handleLogin = (e) => {
 
           <button type="submit" className="login-button">Entrar</button>
           
-          {/* Botão que ativa a tela de trocar senha */}
           <button 
             type="button" 
             className="link-button" 
-            onClick={() => setEsqueciSenha(true)}
+            onClick={() => {
+              setEsqueciSenha(true);
+              setSenha(''); // Limpa a senha ao mudar de tela
+            }}
           >
             Esqueci minha senha
           </button>
@@ -122,11 +150,13 @@ const handleLogin = (e) => {
 
           <button type="submit" className="login-button">Salvar Nova Senha</button>
           
-          {/* Botão para cancelar e voltar ao login */}
           <button 
             type="button" 
             className="link-button" 
-            onClick={() => setEsqueciSenha(false)}
+            onClick={() => {
+              setEsqueciSenha(false);
+              setSenha(''); // Limpa a senha ao voltar
+            }}
           >
             Voltar para o Login
           </button>
