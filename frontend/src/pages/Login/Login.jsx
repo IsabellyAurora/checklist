@@ -6,9 +6,8 @@ import logo from '../../assets/image.png';
 export default function Login() {
   const [usuario, setUsuario] = useState('');
   const [senha, setSenha] = useState('');
-  const [esqueciSenha, setEsqueciSenha] = useState(false); 
+  const [mostrarSenha, setMostrarSenha] = useState(false); // 1. Novo estado para controlar a visibilidade
   
-  // Estado para controlar o nosso pop-up customizado
   const [alerta, setAlerta] = useState({ visivel: false, tipo: '', titulo: '', mensagem: '' });
   
   const navigate = useNavigate();
@@ -32,147 +31,107 @@ export default function Login() {
       });
 
       if (resposta.ok) {
-        // Converte a resposta inteira para JSON
         const json = await resposta.json();
-        
-        // Puxa APENAS o objeto "usuario" que está dentro do "data" da resposta
         const dadosDoUsuario = json.data.usuario;
         
-        // Salva apenas os dados limpos do usuário no navegador
         localStorage.setItem('usuarioLogado', JSON.stringify(dadosDoUsuario));
-        navigate('/home');
+        
+        if (dadosDoUsuario.forcar_troca_senha) {
+          navigate('/nova-senha');
+        } else {
+          navigate('/home');
+        }
       } else {
         mostrarAlerta('erro', 'Falha no login', 'Usuário ou senha incorretos.');
       }
     } catch (erro) {
       console.error('Erro no login:', erro);
-      mostrarAlerta('erro', 'Sem conexão', 'Erro ao conectar com o servidor. Verifique se o backend está rodando.');
+      mostrarAlerta('erro', 'Sem conexão', 'Erro ao conectar com o servidor.');
     }
   };
 
-  const handleTrocarSenha = async (e) => {
-    e.preventDefault();
-    
-    try {
-      const resposta = await fetch('/api/trocar-senha', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome: usuario, senha }) 
-      });
-
-      if (resposta.ok) {
-        mostrarAlerta('sucesso', 'Tudo certo!', 'Senha alterada com sucesso!');
-        setEsqueciSenha(false); 
-        setSenha(''); 
-      } else {
-        mostrarAlerta('erro', 'Ops!', 'Erro ao alterar a senha. Verifique se o usuário está correto.');
-      }
-    } catch (erro) {
-      console.error('Erro ao trocar senha:', erro);
-      mostrarAlerta('erro', 'Sem conexão', 'Erro ao conectar com o servidor. Verifique se o backend está rodando.');
-    }
+  const handleEsqueciSenha = () => {
+    mostrarAlerta(
+      'aviso', 
+      'Esqueceu sua senha?', 
+      'Para sua segurança, solicite a redefinição de senha diretamente ao seu gerente ou ao Administrador do sistema.'
+    );
   };
 
   return (
     <div className="login-container">
       
-      {!esqueciSenha ? (
-        <form onSubmit={handleLogin} className="login-form">
-          <div className="logo-container">
-            <img src={logo} alt="Logo da Empresa" className="login-logo" />
-          </div>
+      <form onSubmit={handleLogin} className="login-form">
+        <div className="logo-container">
+          <img src={logo} alt="Logo da Empresa" className="login-logo" />
+        </div>
 
-          <h2>Entrar no Sistema</h2>
+        <h2>Entrar no Sistema</h2>
+        
+        <div className="input-group">
+          <label htmlFor="usuario">Usuário</label>
+          <input
+            type="text"
+            id="usuario"
+            value={usuario}
+            onChange={(e) => setUsuario(e.target.value)}
+            placeholder="Digite seu usuário"
+            required
+          />
+        </div>
+
+        <div className="input-group">
+          <label htmlFor="senha">Senha</label>
           
-          <div className="input-group">
-            <label htmlFor="usuario">Usuário</label>
+          {/* 2. Wrapper para alinhar o input e o botão do olhinho */}
+          <div className="senha-input-wrapper">
             <input
-              type="text"
-              id="usuario"
-              value={usuario}
-              onChange={(e) => setUsuario(e.target.value)}
-              placeholder="Digite seu usuário"
-              required
-            />
-          </div>
-
-          <div className="input-group">
-            <label htmlFor="senha">Senha</label>
-            <input
-              type="password"
+              type={mostrarSenha ? "text" : "password"} // Muda de password para text dinamicamente
               id="senha"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
               placeholder="Digite sua senha"
               required
             />
+            
+            <button 
+              type="button" 
+              className="btn-mostrar-senha" 
+              onClick={() => setMostrarSenha(!mostrarSenha)}
+              title={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+            >
+              {mostrarSenha ? (
+                // Ícone de Olho Fechado (Riscado)
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icone-olho">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                  <line x1="1" y1="1" x2="23" y2="23"></line>
+                </svg>
+              ) : (
+                // Ícone de Olho Aberto
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icone-olho">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              )}
+            </button>
           </div>
+        </div>
 
-          <button type="submit" className="login-button">Entrar</button>
-          
-          <button 
-            type="button" 
-            className="link-button" 
-            onClick={() => {
-              setEsqueciSenha(true);
-              setSenha(''); 
-            }}
-          >
-            Esqueci minha senha
-          </button>
-        </form>
-      ) : (
-        <form onSubmit={handleTrocarSenha} className="login-form">
-          <div className="logo-container">
-            <img src={logo} alt="Logo da Empresa" className="login-logo" />
-          </div>
+        <button type="submit" className="login-button">Entrar</button>
+        
+        <button 
+          type="button" 
+          className="link-button" 
+          onClick={handleEsqueciSenha}
+        >
+          Esqueci minha senha
+        </button>
+      </form>
 
-          <h2>Trocar Senha</h2>
-          
-          <div className="input-group">
-            <label htmlFor="usuario-troca">Usuário</label>
-            <input
-              type="text"
-              id="usuario-troca"
-              value={usuario}
-              onChange={(e) => setUsuario(e.target.value)}
-              placeholder="Confirme seu usuário"
-              required
-            />
-          </div>
-
-          <div className="input-group">
-            <label htmlFor="nova-senha">Nova Senha</label>
-            <input
-              type="password"
-              id="nova-senha"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              placeholder="Digite a nova senha"
-              required
-            />
-          </div>
-
-          <button type="submit" className="login-button">Salvar Nova Senha</button>
-          
-          <button 
-            type="button" 
-            className="link-button" 
-            onClick={() => {
-              setEsqueciSenha(false);
-              setSenha(''); 
-            }}
-          >
-            Voltar para o Login
-          </button>
-        </form>
-      )}
-
-      {/* Renderização condicional do pop-up customizado */}
       {alerta.visivel && (
         <div className="modal-overlay">
           <div className="modal-content">
-            {alerta.tipo === 'sucesso' ? '✅' : '⚠️'}
+            {alerta.tipo === 'sucesso' ? '✅' : alerta.tipo === 'aviso' ? 'ℹ️' : '⚠️'}
             <h3 className={alerta.tipo === 'erro' ? 'texto-erro' : 'texto-sucesso'}>
               {alerta.titulo}
             </h3>
@@ -184,4 +143,4 @@ export default function Login() {
 
     </div>
   );
-}
+} 

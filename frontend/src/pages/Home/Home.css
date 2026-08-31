@@ -109,3 +109,18 @@
   gap: 1rem;
   margin-top: 1.5rem;
 }
+.perfil-button {
+  background-color: transparent;
+  color: rgb(214, 127, 13);
+  border: 1px solid rgb(214, 127, 13);
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  margin-right: 0.5rem;
+}
+
+.perfil-button:hover {
+  background-color: rgba(214, 127, 13, 0.1);
+}

@@ -10,6 +10,13 @@ export default function Home() {
     const userData = localStorage.getItem('usuarioLogado');
     if (userData) {
       const parsedUser = JSON.parse(userData);
+      
+      // Proteção: se a flag de troca obrigatória estiver true, expulsa para /nova-senha
+      if (parsedUser.forcar_troca_senha) {
+        navigate('/nova-senha');
+        return;
+      }
+      
       setUser(parsedUser);
     } else {
       navigate('/'); 
@@ -23,15 +30,21 @@ export default function Home() {
 
   if (!user) return null; 
 
-  // Verifica se o setor retornado pelo banco de dados é "admin"
   const isAdmin = user.setor && user.setor.toLowerCase() === 'admin';
 
   return (
     <div className="home-container">
       <header className="home-header">
         <h1>Painel de Checklists</h1>
+        
         <div className="user-info">
           <span>Olá, <strong>{user.nome}</strong></span>
+          
+          {/* Novo botão de Meu Perfil */}
+          <button onClick={() => navigate('/meu-perfil')} className="perfil-button">
+            Meu Perfil
+          </button>
+          
           <button onClick={handleLogout} className="logout-button">Sair</button>
         </div>
       </header>
@@ -46,12 +59,19 @@ export default function Home() {
              <button className="primary-button" onClick={() => navigate('/cadastro-usuario')}>
                  Cadastrar Novo Usuário
               </button>
+              
+              <button className="primary-button" onClick={() => navigate('/gerenciar-usuarios')}>
+                Gerenciar Usuários (Resetar Senha)
+              </button>
+
               <button className="primary-button" onClick={() => navigate('/cadastro-checklist')}>
                 Criar Novo Checklist
               </button>
+              
               <button className="primary-button" onClick={() => navigate('/relatorios')}>
                 Ver Relatórios
               </button>
+              
               <button className="primary-button" onClick={() => navigate('/gerenciar-checklists')}>
                 Gerenciar Checklists
               </button>

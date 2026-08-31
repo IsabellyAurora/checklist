@@ -1,0 +1,102 @@
+.gerenciar-container {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 2rem;
+}
+
+.gerenciar-card {
+  background: white;
+  padding: 2.5rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 800px; /* Alargado para comportar a tabela */
+}
+
+.gerenciar-card h2 { color: #333; margin-bottom: 0.5rem; }
+.gerenciar-card p { color: #666; margin-bottom: 2rem; font-size: 0.9rem; }
+
+/* Busca */
+.busca-form {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.input-busca {
+  flex: 1;
+  padding: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+.input-busca:focus { outline: none; border-color: rgb(214, 127, 13); }
+.btn-buscar {
+  padding: 0.75rem 1.5rem;
+  background-color: rgb(214, 127, 13);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.btn-buscar:hover { opacity: 0.9; }
+
+/* Detalhes do Checklist */
+.checklist-detalhes {
+  background-color: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  padding: 1.5rem;
+  border-radius: 6px;
+  margin-bottom: 2rem;
+}
+.status-badge { margin-bottom: 1rem; font-weight: bold; }
+.status-badge .ativo { color: #2e7d32; }
+.status-badge .inativo { color: #d32f2f; }
+
+.titulo-view-group, .titulo-edit-group {
+  display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;
+}
+.titulo-view-group h3 { margin: 0; color: #333; }
+.btn-editar-titulo { background: none; border: none; color: rgb(214, 127, 13); cursor: pointer; text-decoration: underline; }
+.input-editar-titulo { flex: 1; padding: 0.75rem; border: 1px solid #ccc; border-radius: 4px; }
+.btn-salvar-titulo { background-color: rgb(214, 127, 13); color: white; border: none; padding: 0.75rem 1rem; border-radius: 4px; cursor: pointer; }
+.btn-cancelar { background-color: white; border: 1px solid #ccc; padding: 0.75rem 1rem; border-radius: 4px; cursor: pointer; }
+
+.itens-lista ul { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.itens-lista li { padding: 0.75rem; border: 1px solid #e0e0e0; background-color: white; border-radius: 4px; color: #555; }
+
+.botoes-acao-gerenciar { display: flex; justify-content: flex-end; margin-top: 1rem; }
+.btn-inativar { background-color: white; color: #d32f2f; border: 1px solid #d32f2f; padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer; }
+.btn-inativar:hover:not(:disabled) { background-color: #d32f2f; color: white; }
+.btn-inativar:disabled { border-color: #ccc; color: #999; cursor: not-allowed; }
+
+/* Divisor */
+.divisor { border: 0; height: 1px; background-color: #e0e0e0; margin: 2rem 0; }
+
+/* Tabela e Filtros */
+.filtros-container { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+.select-filtro { padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; min-width: 150px; }
+
+.tabela-container { overflow-x: auto; margin-bottom: 1.5rem; border-radius: 4px; border: 1px solid #eee; }
+.tabela-checklists { width: 100%; border-collapse: collapse; text-align: left; }
+.tabela-checklists th, .tabela-checklists td { padding: 1rem; border-bottom: 1px solid #e0e0e0; font-size: 0.9rem;}
+.tabela-checklists th { background-color: #f9f9f9; color: #555; font-weight: 600; }
+.col-id { color: rgb(214, 127, 13); font-weight: bold; }
+.tabela-vazia { text-align: center; padding: 2rem !important; color: #777; }
+
+.btn-ver-detalhes { background: none; border: 1px solid rgb(214, 127, 13); color: rgb(214, 127, 13); padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+.btn-ver-detalhes:hover { background-color: rgba(214, 127, 13, 0.1); }
+
+/* Paginação */
+.paginacao-container { display: flex; justify-content: space-between; align-items: center; padding: 1rem; background-color: #f9f9f9; border-radius: 6px; }
+.btn-paginacao { background-color: white; border: 1px solid #ccc; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; color: #333; }
+.btn-paginacao:hover:not(:disabled) { border-color: rgb(214, 127, 13); color: rgb(214, 127, 13); }
+.btn-paginacao:disabled { background-color: #f0f0f0; color: #aaa; cursor: not-allowed; }
+.indicador-pagina { font-weight: bold; color: #555; font-size: 0.9rem; }
+
+/* Botão Voltar */
+.btn-voltar-home { width: 100%; padding: 0.75rem; background-color: white; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; margin-top: 1rem; font-size: 1rem; }
+.btn-voltar-home:hover { background-color: #f0f0f0; }

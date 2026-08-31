@@ -30,14 +30,13 @@ const login = asyncHandler(async (req, res) => {
     });
   }
 
-  // Remove a senha do payload de resposta
   const { senha: _, ...usuarioSemSenha } = usuario;
 
   return res.status(200).json({
     success: true,
     data: {
       mensagem: 'Login realizado com sucesso!',
-      usuario: usuarioSemSenha, // Contém: id_usuario, nome, email, setor, data_cadastro
+      usuario: usuarioSemSenha, // Agora inclui 'forcar_troca_senha'
     },
   });
 });
@@ -52,7 +51,6 @@ const trocarSenha = asyncHandler(async (req, res) => {
     });
   }
 
-  // Utiliza a model em vez do pool.query direto
   const checkUser = await userModel.findByNome(nome);
 
   if (!checkUser) {
@@ -65,7 +63,6 @@ const trocarSenha = asyncHandler(async (req, res) => {
   const saltRounds = 10;
   const senhaHash = await bcrypt.hash(senha, saltRounds);
 
-  // Utiliza a model para atualizar a senha
   await userModel.updateSenha(nome, senhaHash);
 
   return res.status(200).json({

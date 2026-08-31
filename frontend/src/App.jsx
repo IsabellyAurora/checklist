@@ -6,11 +6,16 @@ import CadastroChecklist from './pages/CadastroChecklist/CadastroChecklist';
 import GerenciarChecklists from './pages/GerenciarChecklists/GerenciarChecklists';
 import PreencherChecklist from './pages/PreencherChecklist/PreencherChecklist';
 import Relatorios from './pages/Relatorios/Relatorios';
+import NovaSenha from './pages/NovaSenha/NovaSenha';
+import MeuPerfil from './pages/MeuPerfil/MeuPerfil';
+import GerenciarUsuarios from './pages/GerenciarUsuarios/GerenciarUsuarios';
 import './App.css';
+import { DeviceProvider } from './contexts/DeviceContext';
 
 function App() {
   return (
     <BrowserRouter>
+    <DeviceProvider>
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/home" element={<Home />} />
@@ -19,7 +24,12 @@ function App() {
         <Route path="/gerenciar-checklists" element={<GerenciarChecklists />} />
         <Route path="/preencher-checklist" element={<PreencherChecklist />} />
         <Route path="/relatorios" element={<Relatorios />} />
+        <Route path="/nova-senha" element={<NovaSenha />} />
+        <Route path="/meu-perfil" element={<MeuPerfil />} />
+        <Route path="/gerenciar-usuarios" element={<GerenciarUsuarios />} />
+
       </Routes>
+    </DeviceProvider>
     </BrowserRouter>
   );
 }

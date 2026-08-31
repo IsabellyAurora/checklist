@@ -1,0 +1,58 @@
+.gerenciar-usuarios-container {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 2rem;
+}
+
+.gerenciar-usuarios-card {
+  background: white;
+  padding: 2.5rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 900px;
+}
+
+.gerenciar-usuarios-card h2 { color: #333; margin-bottom: 0.5rem; }
+.gerenciar-usuarios-card p { color: #666; margin-bottom: 1.5rem; font-size: 0.9rem; }
+
+.tabela-container { overflow-x: auto; margin-bottom: 1.5rem; border-radius: 4px; border: 1px solid #eee; }
+.tabela-usuarios { width: 100%; border-collapse: collapse; text-align: left; }
+.tabela-usuarios th, .tabela-usuarios td { padding: 1rem; border-bottom: 1px solid #e0e0e0; font-size: 0.95rem; }
+.tabela-usuarios th { background-color: #f9f9f9; color: #555; font-weight: 600; }
+.col-destaque { color: rgb(214, 127, 13); font-weight: bold; }
+.tabela-vazia { text-align: center; padding: 2rem !important; color: #777; }
+
+.btn-resetar {
+  background: none;
+  border: 1px solid #d32f2f;
+  color: #d32f2f;
+  padding: 0.4rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.btn-resetar:hover {
+  background-color: #d32f2f;
+  color: white;
+}
+
+.btn-voltar-home {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.2s;
+}
+
+.btn-voltar-home:hover {
+  background-color: #f0f0f0;
+}
