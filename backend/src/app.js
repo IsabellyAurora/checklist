@@ -1,8 +1,12 @@
 const express = require('express');
 const cors = require('cors');
+const swaggerUi = require('swagger-ui-express'); // Novo import
+const swaggerSpec = require('./config/swagger'); // Novo import
 
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
+const checklistRoutes = require('./routes/checklistRoutes');
+const execucaoRoutes = require('./routes/execucaoRoutes');
 const errorHandler = require('./middlewares/errorHandler');
 
 const app = express();
@@ -10,19 +14,18 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Rota Status API
-app.get('/', (req, res) => {
-  res.json({
-    success: true,
-    data: { mensagem: 'API Backend rodando com sucesso!' },
-  });
-});
+// Rota da Documentação Swagger
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Prefixar rotas
+// Rotas da aplicação
 app.use('/api', authRoutes);
 app.use('/api', userRoutes);
 
-// Middleware de erros por último
+// Middleware de erros (sempre por último)
 app.use(errorHandler);
+
+
+app.use('/api', checklistRoutes);
+app.use('/api', execucaoRoutes);
 
 module.exports = app;

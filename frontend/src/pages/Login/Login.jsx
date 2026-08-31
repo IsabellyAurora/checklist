@@ -32,7 +32,13 @@ export default function Login() {
       });
 
       if (resposta.ok) {
-        const dadosDoUsuario = await resposta.json();
+        // Converte a resposta inteira para JSON
+        const json = await resposta.json();
+        
+        // Puxa APENAS o objeto "usuario" que está dentro do "data" da resposta
+        const dadosDoUsuario = json.data.usuario;
+        
+        // Salva apenas os dados limpos do usuário no navegador
         localStorage.setItem('usuarioLogado', JSON.stringify(dadosDoUsuario));
         navigate('/home');
       } else {
@@ -49,7 +55,7 @@ export default function Login() {
     
     try {
       const resposta = await fetch('/api/trocar-senha', {
-        method: 'POST',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nome: usuario, senha }) 
       });

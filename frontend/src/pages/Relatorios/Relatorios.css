@@ -1,0 +1,63 @@
+.relatorios-container {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 2rem;
+}
+
+.relatorios-card {
+  background: white;
+  padding: 2.5rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 800px;
+}
+
+.relatorios-card h2 { color: #333; margin-bottom: 0.5rem; }
+.relatorios-card p { color: #666; margin-bottom: 2rem; font-size: 0.9rem; }
+
+/* Tabela */
+.tabela-container { overflow-x: auto; margin-bottom: 1.5rem; border-radius: 4px; border: 1px solid #eee; }
+.tabela-relatorios { width: 100%; border-collapse: collapse; text-align: left; }
+.tabela-relatorios th, .tabela-relatorios td { padding: 1rem; border-bottom: 1px solid #e0e0e0; font-size: 0.95rem; }
+.tabela-relatorios th { background-color: #f9f9f9; color: #555; font-weight: 600; }
+.col-destaque { color: rgb(214, 127, 13); font-weight: bold; }
+.tabela-vazia { text-align: center; padding: 2rem !important; color: #777; }
+
+/* Botões */
+.btn-ver-detalhes {
+  background: none; border: 1px solid rgb(214, 127, 13); color: rgb(214, 127, 13);
+  padding: 0.35rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem;
+  transition: background-color 0.2s;
+}
+.btn-ver-detalhes:hover { background-color: rgba(214, 127, 13, 0.1); }
+
+.btn-voltar-home {
+  width: 100%; padding: 0.75rem; background-color: white; border: 1px solid #ccc;
+  border-radius: 4px; cursor: pointer; font-size: 1rem; margin-top: 1rem; transition: background-color 0.2s;
+}
+.btn-voltar-home:hover { background-color: #f0f0f0; }
+
+/* Paginação */
+.paginacao-container { display: flex; justify-content: space-between; align-items: center; padding: 1rem; background-color: #f9f9f9; border-radius: 6px; }
+.btn-paginacao { background-color: white; border: 1px solid #ccc; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; color: #333; }
+.btn-paginacao:hover:not(:disabled) { border-color: rgb(214, 127, 13); color: rgb(214, 127, 13); }
+.btn-paginacao:disabled { background-color: #f0f0f0; color: #aaa; cursor: not-allowed; }
+.indicador-pagina { font-weight: bold; color: #555; font-size: 0.9rem; }
+
+/* Tela de Detalhes (Respostas) */
+.info-execucao {
+  background-color: #f9f9f9; padding: 1rem; border-radius: 6px; border: 1px solid #e0e0e0; margin-bottom: 2rem;
+}
+.info-execucao p { margin: 0.25rem 0; color: #333; }
+
+.lista-respostas h3 { margin-bottom: 1rem; color: #444; }
+.lista-respostas ul { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 1rem; }
+.resposta-item { background: white; border: 1px solid #ddd; padding: 1rem; border-radius: 6px; }
+.resposta-item .pergunta-texto { color: #333; margin-bottom: 0.75rem; font-size: 1rem; }
+.resposta-dados { display: flex; flex-direction: column; gap: 0.5rem; }
+.badge-resposta { display: inline-block; background-color: rgba(214, 127, 13, 0.15); color: #b06200; font-weight: bold; padding: 0.4rem 0.75rem; border-radius: 4px; width: fit-content; }
+.obs-texto { font-size: 0.9rem; color: #666; font-style: italic; background: #f9f9f9; padding: 0.5rem; border-radius: 4px; }

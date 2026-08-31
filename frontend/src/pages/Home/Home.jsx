@@ -7,23 +7,24 @@ export default function Home() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Quando a tela carregar, busca quem está logado
     const userData = localStorage.getItem('usuarioLogado');
     if (userData) {
-      setUser(JSON.parse(userData));
+      const parsedUser = JSON.parse(userData);
+      setUser(parsedUser);
     } else {
-      // Se não tiver ninguém logado, expulsa de volta pro login
       navigate('/'); 
     }
   }, [navigate]);
 
   const handleLogout = () => {
-    localStorage.removeItem('usuarioLogado'); // Limpa os dados
+    localStorage.removeItem('usuarioLogado'); 
     navigate('/');
   };
 
-  // Enquanto carrega os dados, não mostra nada para evitar erros na tela
   if (!user) return null; 
+
+  // Verifica se o setor retornado pelo banco de dados é "admin"
+  const isAdmin = user.setor && user.setor.toLowerCase() === 'admin';
 
   return (
     <div className="home-container">
@@ -36,27 +37,34 @@ export default function Home() {
       </header>
 
       <main className="home-content">
-        {/* Renderização Condicional: Se for admin, mostra os cadastros */}
-        {user.role === 'admin' ? (
+        {isAdmin ? (
           <div className="form-card">
             <h2>Painel do Administrador</h2>
             <p>Escolha uma das ações abaixo para gerenciar o sistema:</p>
             
             <div className="admin-actions">
-              <button className="primary-button">Cadastrar Novo Usuário</button>
-              <button className="primary-button">Criar Novo Checklist</button>
-              <button className="primary-button">Ver Relatórios</button>
+             <button className="primary-button" onClick={() => navigate('/cadastro-usuario')}>
+                 Cadastrar Novo Usuário
+              </button>
+              <button className="primary-button" onClick={() => navigate('/cadastro-checklist')}>
+                Criar Novo Checklist
+              </button>
+              <button className="primary-button" onClick={() => navigate('/relatorios')}>
+                Ver Relatórios
+              </button>
+              <button className="primary-button" onClick={() => navigate('/gerenciar-checklists')}>
+                Gerenciar Checklists
+              </button>
             </div>
           </div>
         ) : (
-          /* Se for usuário comum, mostra apenas o checklist do setor dele */
           <div className="form-card">
             <h2>Checklist Diário</h2>
-            <p>Setor de atuação: <strong>{user.setor}</strong></p>
+            <p>Setor de atuação: <strong>{user.setor || 'Não especificado'}</strong></p>
             
             <div className="admin-actions">
-              <button className="primary-button">
-                Iniciar Checklist - {user.setor}
+              <button className="primary-button" onClick={() => navigate('/preencher-checklist')}>
+                Iniciar Checklist {user.setor ? `- ${user.setor}` : ''}
               </button>
             </div>
           </div>

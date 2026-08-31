@@ -1,8 +1,7 @@
 const bcrypt = require('bcryptjs');
-const pool = require('../config/db');
+const userModel = require('../models/userModel');
 const asyncHandler = require('../middlewares/asyncHandler');
 
-// POST /api/login
 const login = asyncHandler(async (req, res) => {
   const { nome, senha } = req.body;
 
@@ -13,19 +12,15 @@ const login = asyncHandler(async (req, res) => {
     });
   }
 
-  // Busca na tabela usando os campos corretos
-  const { rows } = await pool.query('SELECT * FROM usuario WHERE nome = $1', [nome]);
+  const usuario = await userModel.findByNome(nome);
 
-  if (rows.length === 0) {
+  if (!usuario) {
     return res.status(404).json({
       success: false,
       error: 'Usuário não encontrado.',
     });
   }
 
-  const usuario = rows[0];
-
-  // Compara o HASH Bcrypt
   const senhaValida = await bcrypt.compare(senha, usuario.senha);
 
   if (!senhaValida) {
@@ -35,19 +30,18 @@ const login = asyncHandler(async (req, res) => {
     });
   }
 
-  // Remove a senha do objeto de resposta
+  // Remove a senha do payload de resposta
   const { senha: _, ...usuarioSemSenha } = usuario;
 
   return res.status(200).json({
     success: true,
     data: {
       mensagem: 'Login realizado com sucesso!',
-      usuario: usuarioSemSenha,
+      usuario: usuarioSemSenha, // Contém: id_usuario, nome, email, setor, data_cadastro
     },
   });
 });
 
-// PUT /api/trocar-senha
 const trocarSenha = asyncHandler(async (req, res) => {
   const { nome, senha } = req.body;
 
@@ -58,10 +52,10 @@ const trocarSenha = asyncHandler(async (req, res) => {
     });
   }
 
-  // Ajustado para verificar id_usuario
-  const checkUser = await pool.query('SELECT id_usuario FROM usuario WHERE nome = $1', [nome]);
+  // Utiliza a model em vez do pool.query direto
+  const checkUser = await userModel.findByNome(nome);
 
-  if (checkUser.rows.length === 0) {
+  if (!checkUser) {
     return res.status(404).json({
       success: false,
       error: 'Usuário não encontrado.',
@@ -71,7 +65,8 @@ const trocarSenha = asyncHandler(async (req, res) => {
   const saltRounds = 10;
   const senhaHash = await bcrypt.hash(senha, saltRounds);
 
-  await pool.query('UPDATE usuario SET senha = $1 WHERE nome = $2', [senhaHash, nome]);
+  // Utiliza a model para atualizar a senha
+  await userModel.updateSenha(nome, senhaHash);
 
   return res.status(200).json({
     success: true,
