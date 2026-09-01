@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const execucaoController = require('../controllers/execucaoController');
+const verificarToken = require('../middlewares/authMiddleware'); // Adicionado o middleware JWT
 
 /**
  * @swagger
@@ -8,6 +9,8 @@ const execucaoController = require('../controllers/execucaoController');
  *   post:
  *     summary: Salva as respostas de um checklist preenchido por um usuário
  *     tags: [Execuções]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -19,6 +22,12 @@ const execucaoController = require('../controllers/execucaoController');
  *                 type: integer
  *               id_usuario:
  *                 type: integer
+ *               data_inicio:
+ *                 type: string
+ *                 format: date-time
+ *               data_conclusao:
+ *                 type: string
+ *                 format: date-time
  *               respostas:
  *                 type: array
  *                 items:
@@ -36,7 +45,7 @@ const execucaoController = require('../controllers/execucaoController');
  *       400:
  *         description: Dados inválidos ou faltando informações obrigatórias.
  */
-router.post('/execucoes', execucaoController.registrarExecucao);
+router.post('/execucoes', verificarToken(), execucaoController.registrarExecucao);
 
 /**
  * @swagger
@@ -44,6 +53,8 @@ router.post('/execucoes', execucaoController.registrarExecucao);
  *   get:
  *     summary: Lista o histórico de checklists respondidos (com paginação)
  *     tags: [Execuções]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: page
@@ -59,7 +70,7 @@ router.post('/execucoes', execucaoController.registrarExecucao);
  *       200:
  *         description: Histórico de execuções retornado com sucesso.
  */
-router.get('/execucoes', execucaoController.listar);
+router.get('/execucoes', verificarToken(), execucaoController.listar);
 
 /**
  * @swagger
@@ -67,6 +78,8 @@ router.get('/execucoes', execucaoController.listar);
  *   get:
  *     summary: Detalha uma execução específica com todas as perguntas e respostas
  *     tags: [Execuções]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -79,6 +92,6 @@ router.get('/execucoes', execucaoController.listar);
  *       404:
  *         description: Execução não encontrada.
  */
-router.get('/execucoes/:id', execucaoController.buscarPorId);
+router.get('/execucoes/:id', verificarToken(), execucaoController.buscarPorId);
 
-module.exports = router; // Esta é a linha que costuma causar o erro TypeError no app.js se faltar
+module.exports = router;

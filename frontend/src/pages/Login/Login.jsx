@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Login.css';
 import logo from '../../assets/image.png'; 
@@ -6,11 +6,27 @@ import logo from '../../assets/image.png';
 export default function Login() {
   const [usuario, setUsuario] = useState('');
   const [senha, setSenha] = useState('');
-  const [mostrarSenha, setMostrarSenha] = useState(false); // 1. Novo estado para controlar a visibilidade
+  const [mostrarSenha, setMostrarSenha] = useState(false); 
   
   const [alerta, setAlerta] = useState({ visivel: false, tipo: '', titulo: '', mensagem: '' });
   
   const navigate = useNavigate();
+
+  // Verifica se já existe uma sessão ativa ao abrir a página (ex: nova aba)
+  useEffect(() => {
+    const userData = localStorage.getItem('usuarioLogado');
+    const token = localStorage.getItem('accessToken');
+
+    if (userData && token) {
+      const parsedUser = JSON.parse(userData);
+      
+      if (parsedUser.forcar_troca_senha) {
+        navigate('/nova-senha');
+      } else {
+        navigate('/home');
+      }
+    }
+  }, [navigate]);
 
   const mostrarAlerta = (tipo, titulo, mensagem) => {
     setAlerta({ visivel: true, tipo, titulo, mensagem });
@@ -27,14 +43,17 @@ export default function Login() {
       const resposta = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', 
         body: JSON.stringify({ nome: usuario, senha })
       });
 
       if (resposta.ok) {
         const json = await resposta.json();
-        const dadosDoUsuario = json.data.usuario;
         
-        localStorage.setItem('usuarioLogado', JSON.stringify(dadosDoUsuario));
+        localStorage.setItem('accessToken', json.data.accessToken);
+        localStorage.setItem('usuarioLogado', JSON.stringify(json.data.usuario));
+        
+        const dadosDoUsuario = json.data.usuario;
         
         if (dadosDoUsuario.forcar_troca_senha) {
           navigate('/nova-senha');
@@ -83,10 +102,9 @@ export default function Login() {
         <div className="input-group">
           <label htmlFor="senha">Senha</label>
           
-          {/* 2. Wrapper para alinhar o input e o botão do olhinho */}
           <div className="senha-input-wrapper">
             <input
-              type={mostrarSenha ? "text" : "password"} // Muda de password para text dinamicamente
+              type={mostrarSenha ? "text" : "password"} 
               id="senha"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
@@ -143,4 +161,4 @@ export default function Login() {
 
     </div>
   );
-} 
+}

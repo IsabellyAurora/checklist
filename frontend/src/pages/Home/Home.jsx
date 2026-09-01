@@ -23,31 +23,13 @@ export default function Home() {
     }
   }, [navigate]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('usuarioLogado'); 
-    navigate('/');
-  };
-
   if (!user) return null; 
 
   const isAdmin = user.setor && user.setor.toLowerCase() === 'admin';
 
   return (
     <div className="home-container">
-      <header className="home-header">
-        <h1>Painel de Checklists</h1>
-        
-        <div className="user-info">
-          <span>Olá, <strong>{user.nome}</strong></span>
-          
-          {/* Novo botão de Meu Perfil */}
-          <button onClick={() => navigate('/meu-perfil')} className="perfil-button">
-            Meu Perfil
-          </button>
-          
-          <button onClick={handleLogout} className="logout-button">Sair</button>
-        </div>
-      </header>
+      {/* O cabeçalho foi removido daqui pois agora é global (<Header /> no App.jsx) */}
 
       <main className="home-content">
         {isAdmin ? (
@@ -57,12 +39,12 @@ export default function Home() {
             
             <div className="admin-actions">
              <button className="primary-button" onClick={() => navigate('/cadastro-usuario')}>
-                 Cadastrar Novo Usuário
-              </button>
+                Cadastrar Novo Usuário
+             </button>
               
-              <button className="primary-button" onClick={() => navigate('/gerenciar-usuarios')}>
+             <button className="primary-button" onClick={() => navigate('/gerenciar-usuarios')}>
                 Gerenciar Usuários (Resetar Senha)
-              </button>
+             </button>
 
               <button className="primary-button" onClick={() => navigate('/cadastro-checklist')}>
                 Criar Novo Checklist
@@ -92,4 +74,4 @@ export default function Home() {
       </main>
     </div>
   );
-}
+} 

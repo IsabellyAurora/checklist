@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './NovaSenha.css'; // Pode reutilizar estilos do Login.css ou criar um novo
+import { fetchWithAuth } from '../../utils/api'; // 1. Importando o nosso interceptor
+import './NovaSenha.css'; 
 
 export default function NovaSenha() {
   const [novaSenha, setNovaSenha] = useState('');
@@ -25,7 +26,7 @@ export default function NovaSenha() {
     if (alerta.tipo === 'sucesso') navigate('/home');
   };
 
- const handleAtualizarSenha = async (e) => {
+  const handleAtualizarSenha = async (e) => {
     e.preventDefault();
     
     if (novaSenha !== confirmarSenha) {
@@ -34,10 +35,9 @@ export default function NovaSenha() {
     }
 
     try {
-      // Mantido o caminho relativo, ajustando apenas o payload
-      const resposta = await fetch(`/api/usuarios/${usuario.id_usuario}/senha-obrigatoria`, {
+      // 2. Trocado 'fetch' por 'fetchWithAuth' e removido o header manual (a função já faz isso)
+      const resposta = await fetchWithAuth(`/api/usuarios/${usuario.id_usuario}/senha-obrigatoria`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           nova_senha: novaSenha,
           confirmacao_senha: confirmarSenha
@@ -45,13 +45,11 @@ export default function NovaSenha() {
       });
 
       if (resposta.ok) {
-        // Atualiza o localStorage para remover a flag de bloqueio
         const usuarioAtualizado = { ...usuario, forcar_troca_senha: false };
         localStorage.setItem('usuarioLogado', JSON.stringify(usuarioAtualizado));
         
         mostrarAlerta('sucesso', 'Senha atualizada!', 'Sua nova senha foi salva com sucesso.');
       } else {
-        // Lê a mensagem de erro exata vinda do backend
         const erroData = await resposta.json();
         mostrarAlerta('erro', 'Erro ao salvar', erroData.error || 'Não foi possível atualizar a senha.');
       }
@@ -60,6 +58,7 @@ export default function NovaSenha() {
       mostrarAlerta('erro', 'Sem conexão', 'Erro ao comunicar com o servidor.');
     }
   };
+
   if (!usuario) return null;
 
   return (
@@ -96,6 +95,7 @@ export default function NovaSenha() {
       {alerta.visivel && (
         <div className="modal-overlay">
           <div className="modal-content">
+            {alerta.tipo === 'sucesso' ? '✅' : '⚠️'}
             <h3 className={alerta.tipo === 'erro' ? 'texto-erro' : 'texto-sucesso'}>{alerta.titulo}</h3>
             <p>{alerta.mensagem}</p>
             <button className="modal-button" onClick={fecharAlerta}>OK</button>

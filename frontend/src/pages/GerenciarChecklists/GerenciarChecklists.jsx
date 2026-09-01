@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { fetchWithAuth } from '../../utils/api'; // 1. Importando o interceptor JWT
 import './GerenciarChecklists.css';
 
 export default function GerenciarChecklists() {
@@ -33,10 +34,11 @@ export default function GerenciarChecklists() {
 
   const carregarLista = async () => {
     try {
-      let url = `/api/checklists?page=${page}&limit=5`; // Limitado a 5 para não esticar muito a tela
+      let url = `/api/checklists?page=${page}&limit=5`;
       if (setorFiltro) url += `&setor=${setorFiltro}`;
 
-      const resposta = await fetch(url);
+      // 2. Substituído fetch por fetchWithAuth
+      const resposta = await fetchWithAuth(url);
       if (resposta.ok) {
         const json = await resposta.json();
         setListaChecklists(json.data || []);
@@ -63,13 +65,14 @@ export default function GerenciarChecklists() {
   const buscarChecklistPorId = async (id) => {
     if (!id) return;
     try {
-      const resposta = await fetch(`/api/checklists/${id}`);
+      // 3. Substituído fetch por fetchWithAuth
+      const resposta = await fetchWithAuth(`/api/checklists/${id}`);
       if (resposta.ok) {
         const json = await resposta.json();
         const dados = json.data || json;
         setChecklist(dados);
         setNovoTitulo(dados.titulo);
-        setIdBusca(id); // Atualiza o input se o usuário clicou na tabela
+        setIdBusca(id);
         setEditando(false);
       } else {
         mostrarAlerta('erro', 'Não encontrado', 'Checklist não encontrado.');
@@ -87,9 +90,9 @@ export default function GerenciarChecklists() {
 
   const handleSalvarTitulo = async () => {
     try {
-      const resposta = await fetch(`/api/checklists/${checklist.id_checklist}`, {
+      // 4. Substituído fetch por fetchWithAuth
+      const resposta = await fetchWithAuth(`/api/checklists/${checklist.id_checklist}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ titulo: novoTitulo })
       });
 
@@ -97,7 +100,7 @@ export default function GerenciarChecklists() {
         mostrarAlerta('sucesso', 'Sucesso!', 'Título atualizado com sucesso.');
         setChecklist({ ...checklist, titulo: novoTitulo });
         setEditando(false);
-        carregarLista(); // Atualiza a tabela abaixo
+        carregarLista();
       } else {
         mostrarAlerta('erro', 'Erro', 'Não foi possível atualizar o título.');
       }
@@ -111,11 +114,14 @@ export default function GerenciarChecklists() {
     if (!confirmar) return;
 
     try {
-      const resposta = await fetch(`/api/checklists/${checklist.id_checklist}`, { method: 'DELETE' });
+      // 5. Substituído fetch por fetchWithAuth
+      const resposta = await fetchWithAuth(`/api/checklists/${checklist.id_checklist}`, { 
+        method: 'DELETE' 
+      });
       if (resposta.ok) {
         mostrarAlerta('sucesso', 'Inativado!', 'O checklist foi inativado.');
         setChecklist({ ...checklist, ativo: false });
-        carregarLista(); // Atualiza a tabela abaixo
+        carregarLista(); 
       } else {
         mostrarAlerta('erro', 'Erro', 'Não foi possível inativar o checklist.');
       }
@@ -130,7 +136,6 @@ export default function GerenciarChecklists() {
         <h2>Gerenciar Checklists</h2>
         <p>Busque um ID para editar, ou selecione na lista abaixo.</p>
 
-        {/* ÁREA 1: BUSCA INDIVIDUAL */}
         <form onSubmit={handleBuscar} className="busca-form">
           <input
             type="number"
@@ -142,7 +147,6 @@ export default function GerenciarChecklists() {
           <button type="submit" className="btn-buscar">Buscar</button>
         </form>
 
-        {/* ÁREA 2: DETALHES E EDIÇÃO DO CHECKLIST SELECIONADO */}
         {checklist && (
           <div className="checklist-detalhes">
             <div className="status-badge">
@@ -197,7 +201,6 @@ export default function GerenciarChecklists() {
 
         <hr className="divisor" />
 
-        {/* ÁREA 3: LISTAGEM E PAGINAÇÃO */}
         <div className="listagem-secao">
           <div className="filtros-container">
             <label htmlFor="filtro-setor">Filtrar por Setor:</label>

@@ -2,12 +2,19 @@ const execucaoModel = require('../models/execucaoModel');
 const asyncHandler = require('../middlewares/asyncHandler');
 
 const registrarExecucao = asyncHandler(async (req, res) => {
-  const { id_checklist, id_usuario, respostas } = req.body;
+  const { id_checklist, id_usuario, respostas, data_inicio, data_conclusao, ordem_servico } = req.body;
 
   if (!id_checklist || !id_usuario || !respostas || !Array.isArray(respostas) || respostas.length === 0) {
     return res.status(400).json({
       success: false,
       error: 'Os campos id_checklist, id_usuario e um array de respostas são obrigatórios.',
+    });
+  }
+
+  if (!data_inicio || !data_conclusao) {
+    return res.status(400).json({
+      success: false,
+      error: 'As datas de início (data_inicio) e conclusão (data_conclusao) são obrigatórias.',
     });
   }
 
@@ -20,7 +27,14 @@ const registrarExecucao = asyncHandler(async (req, res) => {
     }
   }
 
-  const resultado = await execucaoModel.salvarExecucaoCompleta(id_checklist, id_usuario, respostas);
+  const resultado = await execucaoModel.salvarExecucaoCompleta(
+    id_checklist, 
+    id_usuario, 
+    respostas, 
+    data_inicio, 
+    data_conclusao,
+    ordem_servico || null
+  );
 
   return res.status(201).json({
     success: true,

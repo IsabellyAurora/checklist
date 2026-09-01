@@ -1,20 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const userController = require('../controllers/userController');
-const checkAdmin = require('../middlewares/checkAdmin');
+const execucaoController = require('../controllers/execucaoController');
+const verificarToken = require('../middlewares/authMiddleware');
 
 /**
  * @swagger
- * /usuarios:
+ * /execucoes:
  *   post:
- *     summary: Cadastra um novo usuário (Apenas Admin)
- *     tags: [Usuários]
- *     parameters:
- *       - in: header
- *         name: x-setor-usuario
- *         required: true
- *         schema:
- *           type: string
+ *     summary: Salva as respostas de um checklist preenchido por um usuário
+ *     tags: [Execuções]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -22,161 +18,83 @@ const checkAdmin = require('../middlewares/checkAdmin');
  *           schema:
  *             type: object
  *             properties:
- *               nome:
+ *               id_checklist:
+ *                 type: integer
+ *               id_usuario:
+ *                 type: integer
+ *               data_inicio:
  *                 type: string
- *               email:
+ *                 format: date-time
+ *               data_conclusao:
  *                 type: string
- *               senha:
+ *                 format: date-time
+ *               ordem_servico:
  *                 type: string
- *               setor:
- *                 type: string
+ *                 description: Número da OS vinculada a esta execução (Opcional)
+ *               respostas:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     id_item:
+ *                       type: integer
+ *                     valor_resposta:
+ *                       type: string
+ *                     observacao:
+ *                       type: string
  *     responses:
  *       201:
- *         description: Usuário cadastrado com sucesso.
+ *         description: Respostas salvas com sucesso.
+ *       400:
+ *         description: Dados inválidos ou faltando informações obrigatórias.
  */
-router.post('/usuarios', checkAdmin, userController.cadastrarUsuario);
+router.post('/execucoes', verificarToken(), execucaoController.registrarExecucao);
 
 /**
  * @swagger
- * /usuarios:
+ * /execucoes:
  *   get:
- *     summary: Lista todos os usuários cadastrados (com paginação)
- *     tags: [Usuários]
+ *     summary: Lista o histórico de checklists respondidos (com paginação)
+ *     tags: [Execuções]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: page
  *         schema:
  *           type: integer
  *           default: 1
- *         description: Número da página que deseja visualizar
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           default: 10
- *         description: Quantidade de registros por página
  *     responses:
  *       200:
- *         description: Retorna um objeto paginado com a lista de usuários.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 totalItems:
- *                   type: integer
- *                 totalPages:
- *                   type: integer
- *                 currentPage:
- *                   type: integer
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
+ *         description: Histórico de execuções retornado com sucesso.
  */
-router.get('/usuarios', userController.getUsuarios);
+router.get('/execucoes', verificarToken(), execucaoController.listar);
 
 /**
  * @swagger
- * /usuarios/{id}/resetar-senha:
- *   put:
- *     summary: Reseta a senha de um usuário para um valor padrão (Apenas Admin)
- *     tags: [Usuários]
+ * /execucoes/{id}:
+ *   get:
+ *     summary: Detalha uma execução específica com todas as perguntas e respostas
+ *     tags: [Execuções]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
- *       - in: header
- *         name: x-setor-usuario
- *         required: true
- *         schema:
- *           type: string
- *           example: admin
  *     responses:
  *       200:
- *         description: Senha resetada e flag ativada com sucesso.
+ *         description: Retorna a execução, os dados do checklist e as respostas dadas.
  *       404:
- *         description: Usuário não encontrado.
+ *         description: Execução não encontrada.
  */
-router.put('/usuarios/:id/resetar-senha', checkAdmin, userController.resetarSenha);
-
-/**
- * @swagger
- * /usuarios/{id}/senha-obrigatoria:
- *   put:
- *     summary: Conclui a troca de senha obrigatória após o reset do Admin
- *     tags: [Usuários]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               nova_senha:
- *                 type: string
- *               confirmacao_senha:
- *                 type: string
- *             example:
- *               nova_senha: "NovaSenha@123"
- *               confirmacao_senha: "NovaSenha@123"
- *     responses:
- *       200:
- *         description: Senha alterada e flag removida com sucesso.
- *       400:
- *         description: Senhas não conferem, pendência não encontrada ou dados inválidos.
- *       404:
- *         description: Usuário não encontrado.
- */
-router.put('/usuarios/:id/senha-obrigatoria', userController.trocarSenhaObrigatoria);
-
-/**
- * @swagger
- * /usuarios/{id}/senha:
- *   put:
- *     summary: Altera a senha do próprio usuário de forma voluntária
- *     tags: [Usuários]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               senha_atual:
- *                 type: string
- *               nova_senha:
- *                 type: string
- *               confirmacao_senha:
- *                 type: string
- *             example:
- *               senha_atual: "MinhaSenhaAntiga"
- *               nova_senha: "NovaSenha@123"
- *               confirmacao_senha: "NovaSenha@123"
- *     responses:
- *       200:
- *         description: Senha alterada com sucesso.
- *       400:
- *         description: Senhas não conferem ou nova senha é igual à atual.
- *       401:
- *         description: A senha atual informada está incorreta.
- */
-router.put('/usuarios/:id/senha', userController.alterarMinhaSenha);
+router.get('/execucoes/:id', verificarToken(), execucaoController.buscarPorId);
 
 module.exports = router;

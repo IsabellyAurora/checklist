@@ -1,8 +1,9 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const swaggerUi = require('swagger-ui-express'); // Novo import
 const swaggerSpec = require('./config/swagger'); // Novo import
-
+const cookieParser = require('cookie-parser'); // Adicione esta linha
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const checklistRoutes = require('./routes/checklistRoutes');
@@ -11,8 +12,12 @@ const errorHandler = require('./middlewares/errorHandler');
 
 const app = express();
 
-app.use(cors());
+app.use(cors({ 
+  origin: ['http://localhost:5173', 'http://192.168.0.209:5173'], // Trave para a URL exata do seu front no React
+  credentials: true // Essencial para permitir o tráfego de cookies entre front e back
+}));
 app.use(express.json());
+app.use(cookieParser());
 
 // Rota da Documentação Swagger
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

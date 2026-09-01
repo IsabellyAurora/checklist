@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { fetchWithAuth } from '../../utils/api'; // 1. Importado o interceptor JWT
 
 export default function MeuPerfil() {
   const [senhaAtual, setSenhaAtual] = useState('');
   const [novaSenha, setNovaSenha] = useState('');
-  const [confirmarSenha, setConfirmarSenha] = useState(''); // 1. Adicionado o estado
+  const [confirmarSenha, setConfirmarSenha] = useState('');
   const [usuario, setUsuario] = useState(null);
   const [alerta, setAlerta] = useState({ visivel: false, tipo: '', titulo: '', mensagem: '' });
   const navigate = useNavigate();
@@ -27,9 +28,9 @@ export default function MeuPerfil() {
     }
 
     try {
-      const resposta = await fetch(`/api/usuarios/${usuario.id_usuario}/senha`, {
+      // 2. Substituído o 'fetch' padrão pelo 'fetchWithAuth'
+      const resposta = await fetchWithAuth(`/api/usuarios/${usuario.id_usuario}/senha`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           senha_atual: senhaAtual, 
           nova_senha: novaSenha,
@@ -83,7 +84,6 @@ export default function MeuPerfil() {
             />
           </div>
 
-          {/* 2. Adicionado o input de confirmação de senha */}
           <div className="input-group" style={{ marginTop: '1rem' }}>
             <label>Confirmar Nova Senha</label>
             <input

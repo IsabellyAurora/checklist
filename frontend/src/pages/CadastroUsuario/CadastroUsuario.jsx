@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { fetchWithAuth } from '../../utils/api'; // 1. Importando o interceptor
 import './CadastroUsuario.css';
 
 export default function CadastroUsuario() {
@@ -17,26 +18,24 @@ export default function CadastroUsuario() {
 
   const fecharAlerta = () => {
     setAlerta({ ...alerta, visivel: false });
-    // Se foi sucesso, volta para a home após fechar o alerta
     if (alerta.tipo === 'sucesso') {
       navigate('/home');
     }
   };
 
-const handleCadastro = async (e) => {
+  const handleCadastro = async (e) => {
     e.preventDefault();
     
     try {
-      // 1. Recupera os dados do usuário logado no LocalStorage
       const usuarioStorage = localStorage.getItem('usuarioLogado');
       const usuarioLogado = usuarioStorage ? JSON.parse(usuarioStorage) : null;
 
-      // 2. Envia a requisição com o cabeçalho de autorização e a porta correta
-      const resposta = await fetch('http://localhost:3000/api/usuarios', {
+      // 2. Substituído o 'fetch' padrão pelo 'fetchWithAuth' e URL ajustada
+      const resposta = await fetchWithAuth('/api/usuarios', {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'x-setor-usuario': usuarioLogado?.setor || '' // Envia o setor para o backend
+          // O fetchWithAuth já insere o Content-Type e o Token automaticamente
+          'x-setor-usuario': usuarioLogado?.setor || '' 
         },
         body: JSON.stringify({ nome, email, senha, setor })
       });
@@ -45,7 +44,6 @@ const handleCadastro = async (e) => {
         mostrarAlerta('sucesso', 'Cadastro concluído!', 'O usuário foi cadastrado com sucesso.');
         setNome(''); setEmail(''); setSenha(''); setSetor('');
       } else {
-        // Tenta capturar a mensagem de erro exata enviada pelo backend
         const erroData = await resposta.json();
         mostrarAlerta('erro', 'Erro ao cadastrar', erroData.error || 'Verifique os dados e tente novamente.');
       }

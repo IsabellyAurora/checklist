@@ -48,7 +48,7 @@ const getUsuarios = asyncHandler(async (req, res) => {
   });
 });
 
-// Nova Função: Admin redefine a senha
+// Admin redefine a senha
 const resetarSenha = asyncHandler(async (req, res) => {
   const { id } = req.params;
   
@@ -155,7 +155,7 @@ const alterarMinhaSenha = asyncHandler(async (req, res) => {
     return res.status(401).json({ success: false, error: 'A senha atual está incorreta.' });
   }
 
-  // 4. Impede que o usuário troque pela mesma senha (opcional, mas recomendado)
+  // 4. Impede que o usuário troque pela mesma senha
   const mesmaSenha = await bcrypt.compare(nova_senha, usuario.senha);
   if (mesmaSenha) {
     return res.status(400).json({ 
@@ -177,10 +177,35 @@ const alterarMinhaSenha = asyncHandler(async (req, res) => {
     },
   });
 });
+
+// Nova Função: Ativar/Inativar Usuário (Soft Delete)
+const alternarStatus = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { ativo } = req.body;
+
+  if (typeof ativo !== 'boolean') {
+    return res.status(400).json({ success: false, error: 'O status ativo deve ser um valor booleano (true/false).' });
+  }
+
+  const sucesso = await userModel.mudarStatus(id, ativo);
+
+  if (!sucesso) {
+    return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
+  }
+
+  return res.status(200).json({
+    success: true,
+    data: {
+      mensagem: ativo ? 'Usuário reativado com sucesso!' : 'Usuário inativado com sucesso.',
+    },
+  });
+});
+
 module.exports = {
   cadastrarUsuario,
   getUsuarios,
   resetarSenha,
   trocarSenhaObrigatoria,
   alterarMinhaSenha,
+  alternarStatus, // Exportação adicionada
 };

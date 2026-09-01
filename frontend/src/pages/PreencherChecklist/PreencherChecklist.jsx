@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { fetchWithAuth } from '../../utils/api'; 
 import './PreencherChecklist.css';
 
 export default function PreencherChecklist() {
@@ -7,17 +8,21 @@ export default function PreencherChecklist() {
   const [checklistsDisponiveis, setChecklistsDisponiveis] = useState([]);
   const [idChecklistSelecionado, setIdChecklistSelecionado] = useState('');
   
-  // Detalhes do checklist escolhido (inclui os itens/perguntas)
+  const [busca, setBusca] = useState('');
+  const [dropdownAberto, setDropdownAberto] = useState(false);
+  
   const [checklistAtual, setChecklistAtual] = useState(null);
-  
-  // Estado para armazenar as respostas. Ex: { id_item: { valor_resposta: 'Sim', observacao: '' } }
   const [respostas, setRespostas] = useState({});
-  
   const [alerta, setAlerta] = useState({ visivel: false, tipo: '', titulo: '', mensagem: '' });
+  
+  const [dataInicio, setDataInicio] = useState(null);
+  
+  // NOVO: Estado para armazenar o número da OS
+  const [ordemServico, setOrdemServico] = useState('');
+
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Pega os dados do usuário logado para saber o setor e o ID dele
     const userData = localStorage.getItem('usuarioLogado');
     if (userData) {
       const parsedUser = JSON.parse(userData);
@@ -37,13 +42,11 @@ export default function PreencherChecklist() {
     if (alerta.tipo === 'sucesso') navigate('/home');
   };
 
-  // Busca apenas os checklists ativos do setor do usuário
   const carregarChecklistsDoSetor = async (setor) => {
     try {
-      const response = await fetch(`/api/checklists?setor=${setor}`);
+      const response = await fetchWithAuth(`/api/checklists?setor=${setor}`);
       if (response.ok) {
         const json = await response.json();
-        // Filtra apenas os ativos, caso a API já não faça isso
         const ativos = (json.data || []).filter(c => c.ativo);
         setChecklistsDisponiveis(ativos);
       }
@@ -52,25 +55,34 @@ export default function PreencherChecklist() {
     }
   };
 
-  // Quando o usuário escolhe um checklist no select, busca as perguntas dele
-  const handleSelecionarChecklist = async (e) => {
-    const id = e.target.value;
-    setIdChecklistSelecionado(id);
-    setRespostas({}); // Limpa respostas anteriores
-
-    if (!id) {
+  const handleMudancaBusca = (e) => {
+    setBusca(e.target.value);
+    setDropdownAberto(true);
+    
+    if (e.target.value === '') {
+      setIdChecklistSelecionado('');
       setChecklistAtual(null);
-      return;
+      setDataInicio(null);
+      setOrdemServico(''); // Limpa a OS se apagar a busca
     }
+  };
 
+  const handleSelecionarDoDropdown = async (checklistEscolhido) => {
+    setBusca(checklistEscolhido.titulo); 
+    setDropdownAberto(false); 
+    setIdChecklistSelecionado(checklistEscolhido.id_checklist);
+    setRespostas({}); 
+    setOrdemServico(''); // Limpa a OS ao iniciar um novo checklist
+    
     try {
-      const response = await fetch(`/api/checklists/${id}`);
+      const response = await fetchWithAuth(`/api/checklists/${checklistEscolhido.id_checklist}`);
       if (response.ok) {
         const json = await response.json();
         const dados = json.data || json;
         setChecklistAtual(dados);
         
-        // Prepara o objeto de respostas vazio baseado nos itens recebidos
+        setDataInicio(new Date().toISOString());
+        
         const respostasIniciais = {};
         if (dados.itens) {
           dados.itens.forEach(item => {
@@ -85,7 +97,6 @@ export default function PreencherChecklist() {
     }
   };
 
-  // Atualiza o valor de uma resposta ou observação específica
   const handleRespostaChange = (idItem, campo, valor) => {
     setRespostas(prev => ({
       ...prev,
@@ -98,11 +109,17 @@ export default function PreencherChecklist() {
 
   const handleEnviarChecklist = async (e) => {
     e.preventDefault();
+    
+    const dataConclusao = new Date().toISOString();
 
-    // Formata o payload para a tabela de execucao e respostas do banco de dados
     const payload = {
       id_checklist: Number(idChecklistSelecionado),
-      id_usuario: usuario.id_usuario, // Puxa o ID de quem está logado
+      id_usuario: usuario.id_usuario,
+      data_inicio: dataInicio,         
+      data_conclusao: dataConclusao,
+      dataInicio: dataInicio,
+      dataConclusao: dataConclusao,
+      ordem_servico: ordemServico, // NOVO: Enviando a OS para o backend
       respostas: Object.entries(respostas).map(([id_item, dados]) => ({
         id_item: Number(id_item),
         valor_resposta: dados.valor_resposta,
@@ -111,10 +128,8 @@ export default function PreencherChecklist() {
     };
 
     try {
-      // Confirme com seu colega se a rota para salvar a execução será essa
-      const response = await fetch('/api/execucoes', {
+      const response = await fetchWithAuth('/api/execucoes', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
@@ -129,33 +144,75 @@ export default function PreencherChecklist() {
     }
   };
 
+  const checklistsFiltrados = checklistsDisponiveis.filter(c => {
+    const tituloSeguro = c.titulo ? c.titulo.toLowerCase() : '';
+    const buscaSegura = busca ? busca.toLowerCase() : '';
+    return tituloSeguro.includes(buscaSegura);
+  });
+
   return (
     <div className="preencher-container">
       <div className="preencher-card">
         <h2>Preencher Checklist</h2>
         <p>Setor: <strong>{usuario?.setor}</strong></p>
 
-        <div className="selecao-checklist">
-          <label htmlFor="select-checklist">Selecione uma tarefa:</label>
-          <select 
-            id="select-checklist" 
-            value={idChecklistSelecionado} 
-            onChange={handleSelecionarChecklist}
+        <div className="selecao-checklist" style={{ position: 'relative' }}>
+          <label htmlFor="busca-checklist">Busque ou selecione uma tarefa:</label>
+          
+          <input
+            type="text"
+            id="busca-checklist"
+            placeholder="Clique para ver ou digite para buscar..."
             className="input-padrao"
-          >
-            <option value="">-- Escolha um checklist --</option>
-            {checklistsDisponiveis.map(c => (
-              <option key={c.id_checklist} value={c.id_checklist}>
-                {c.titulo}
-              </option>
-            ))}
-          </select>
+            value={busca}
+            onChange={handleMudancaBusca}
+            onFocus={() => setDropdownAberto(true)}
+            onBlur={() => setTimeout(() => setDropdownAberto(false), 200)} 
+            autoComplete="off"
+          />
+          
+          {dropdownAberto && checklistsFiltrados.length > 0 && (
+            <ul className="dropdown-checklists">
+              {checklistsFiltrados.map(c => (
+                <li 
+                  key={c.id_checklist}
+                  className="dropdown-item"
+                  onClick={() => handleSelecionarDoDropdown(c)}
+                >
+                  <span className="dropdown-icone">📄</span>
+                  {c.titulo}
+                </li>
+              ))}
+            </ul>
+          )}
+          
+          {dropdownAberto && checklistsFiltrados.length === 0 && (
+            <div className="dropdown-empty">
+              Nenhum checklist encontrado com esse nome.
+            </div>
+          )}
         </div>
 
         {checklistAtual && (
           <form onSubmit={handleEnviarChecklist} className="formulario-perguntas">
             <h3 className="titulo-checklist-atual">{checklistAtual.titulo}</h3>
             
+            {/* NOVO: Campo de entrada para a Ordem de Serviço */}
+            <div className="campo-os" style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+              <label htmlFor="input-os" style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.5rem', color: '#374151' }}>
+                Número da OS (Ordem de Serviço): <span className="asterisco">*</span>
+              </label>
+              <input
+                type="text"
+                id="input-os"
+                className="input-padrao"
+                placeholder="Ex: OS-12345"
+                value={ordemServico}
+                onChange={(e) => setOrdemServico(e.target.value)}
+                required
+              />
+            </div>
+
             <div className="lista-perguntas">
               {checklistAtual.itens && checklistAtual.itens.length > 0 ? (
                 checklistAtual.itens.map((item) => (
@@ -166,7 +223,6 @@ export default function PreencherChecklist() {
                     </p>
 
                     <div className="resposta-area">
-                      {/* Renderiza o input correto dependendo do tipo */}
                       {item.tipo === 'booleano' && (
                         <select
                           required={item.obrigatorio}
@@ -203,7 +259,6 @@ export default function PreencherChecklist() {
                         />
                       )}
 
-                      {/* Campo opcional de observação para todos os itens */}
                       <input
                         type="text"
                         className="input-observacao"
@@ -220,7 +275,7 @@ export default function PreencherChecklist() {
             </div>
 
             <div className="botoes-acao">
-              <button type="button" className="btn-voltar" onClick={() => navigate('/home')}>
+              <button type="button" className="btn-voltar" onClick={() => { setChecklistAtual(null); setBusca(''); setIdChecklistSelecionado(''); setOrdemServico(''); }}>
                 Cancelar
               </button>
               <button type="submit" className="btn-salvar" disabled={!checklistAtual.itens?.length}>

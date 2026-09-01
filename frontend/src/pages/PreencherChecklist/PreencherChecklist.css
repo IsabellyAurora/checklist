@@ -111,3 +111,87 @@
 }
 .btn-salvar:hover:not(:disabled) { opacity: 0.9; }
 .btn-salvar:disabled { background-color: #ccc; cursor: not-allowed; }
+/* =========================================
+   CUSTOM DROPDOWN (BARRA DE PESQUISA)
+========================================= */
+.dropdown-checklists {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  margin-top: 4px;
+  max-height: 250px;
+  overflow-y: auto;
+  list-style: none;
+  padding: 0;
+  z-index: 1000;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  
+  /* Estilizando a barra de rolagem (Fica mais elegante) */
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.dropdown-checklists::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dropdown-checklists::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 10px;
+}
+
+.dropdown-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid #f3f4f6;
+  color: #374151;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.dropdown-icone {
+  font-size: 1.1rem;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+/* EFEITO QUANDO PASSA O MOUSE */
+.dropdown-item:hover {
+  background-color: #f3f4f6; /* Cor de fundo suave */
+  color: #111827; /* Texto mais escuro */
+  padding-left: 20px; /* Pequeno empurrãozinho pro lado (efeito moderno) */
+}
+
+.dropdown-item:hover .dropdown-icone {
+  opacity: 1;
+}
+
+.dropdown-empty {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  margin-top: 4px;
+  padding: 16px;
+  color: #6b7280;
+  z-index: 1000;
+  text-align: center;
+  font-style: italic;
+  font-size: 0.95rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}

@@ -1,23 +1,21 @@
 const pool = require('../config/db');
 
-const salvarExecucaoCompleta = async (idChecklist, idUsuario, respostas) => {
+const salvarExecucaoCompleta = async (idChecklist, idUsuario, respostas, dataInicio, dataConclusao, ordemServico) => {
   const client = await pool.connect();
 
   try {
     await client.query('BEGIN');
 
-    // Cria a execução marcando-a como concluída no momento do envio[cite: 1]
     const resExecucao = await client.query(
-      `INSERT INTO execucao (id_checklist, id_usuario, status, data_conclusao) 
-       VALUES ($1, $2, 'CONCLUIDO', CURRENT_TIMESTAMP) 
+      `INSERT INTO execucao (id_checklist, id_usuario, status, data_inicio, data_conclusao, ordem_servico) 
+       VALUES ($1, $2, 'CONCLUIDO', $3::timestamp, $4::timestamp, $5) 
        RETURNING *`,
-      [idChecklist, idUsuario]
+      [idChecklist, idUsuario, dataInicio, dataConclusao, ordemServico]
     );
     const execucao = resExecucao.rows[0];
 
     const respostasSalvas = [];
 
-    // Insere cada resposta vinculada ao id_execucao e ao id_item[cite: 1]
     for (const resp of respostas) {
       const resResposta = await client.query(
         `INSERT INTO resposta (id_execucao, id_item, valor_resposta, observacao) 
@@ -45,14 +43,13 @@ const salvarExecucaoCompleta = async (idChecklist, idUsuario, respostas) => {
 const listarExecucoes = async (page = 1, limit = 10) => {
   const offset = (page - 1) * limit;
   
-  // Conta o total para a paginação
   const countResult = await pool.query('SELECT COUNT(*) FROM execucao');
   const totalItems = parseInt(countResult.rows[0].count, 10);
 
-  // Busca os dados mesclando execução, checklist e usuário[cite: 1]
   const query = `
     SELECT 
-      e.id_execucao, e.status, e.data_inicio, e.data_conclusao,
+      e.id_execucao, e.status, e.data_inicio, e.data_conclusao, e.ordem_servico,
+      EXTRACT(EPOCH FROM (e.data_conclusao - e.data_inicio))::INTEGER AS tempo_execucao_segundos,
       c.titulo AS checklist_titulo, c.setor,
       u.nome AS usuario_nome
     FROM execucao e
@@ -68,9 +65,11 @@ const listarExecucoes = async (page = 1, limit = 10) => {
 };
 
 const buscarExecucaoPorId = async (idExecucao) => {
-  // 1. Busca o cabeçalho da execução[cite: 1]
   const resExecucao = await pool.query(`
-    SELECT e.*, c.titulo, c.setor, u.nome AS usuario_nome
+    SELECT 
+      e.*, 
+      EXTRACT(EPOCH FROM (e.data_conclusao - e.data_inicio))::INTEGER AS tempo_execucao_segundos,
+      c.titulo, c.setor, u.nome AS usuario_nome
     FROM execucao e
     JOIN checklist c ON e.id_checklist = c.id_checklist
     JOIN usuario u ON e.id_usuario = u.id_usuario
@@ -80,7 +79,6 @@ const buscarExecucaoPorId = async (idExecucao) => {
   if (resExecucao.rows.length === 0) return null;
   const execucao = resExecucao.rows[0];
 
-  // 2. Busca as respostas vinculadas com as descrições dos itens[cite: 1]
   const resRespostas = await pool.query(`
     SELECT 
       r.id_resposta, r.valor_resposta, r.observacao,

@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { fetchWithAuth } from '../../utils/api'; // 1. Importando o nosso interceptor JWT
 import './CadastroChecklist.css';
 
 export default function CadastroChecklist() {
   const [titulo, setTitulo] = useState('');
-  const [setor, setSetor] = useState(''); // Novo estado para o setor
+  const [setor, setSetor] = useState(''); 
   const [ativo, setAtivo] = useState(true);
   
   const [itens, setItens] = useState([
@@ -42,7 +43,7 @@ export default function CadastroChecklist() {
     setItens(novosItens);
   };
 
- const handleCadastro = async (e) => {
+  const handleCadastro = async (e) => {
     e.preventDefault();
     
     const payload = {
@@ -58,16 +59,15 @@ export default function CadastroChecklist() {
     };
 
     try {
-      // 1. Recupera os dados do usuário logado no LocalStorage
       const usuarioStorage = localStorage.getItem('usuarioLogado');
       const usuarioLogado = usuarioStorage ? JSON.parse(usuarioStorage) : null;
 
-      // 2. Insere a URL completa do backend e o cabeçalho de autorização
-      const resposta = await fetch('http://localhost:3000/api/checklists', {
+      // 2. Trocado 'fetch' por 'fetchWithAuth' e URL ajustada para caminho relativo
+      const resposta = await fetchWithAuth('/api/checklists', {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'x-setor-usuario': usuarioLogado?.setor || '' // Necessário para o middleware checkAdmin
+          // Content-Type e Authorization já são colocados automaticamente pelo fetchWithAuth
+          'x-setor-usuario': usuarioLogado?.setor || '' 
         },
         body: JSON.stringify(payload)
       });
@@ -75,7 +75,6 @@ export default function CadastroChecklist() {
       if (resposta.ok) {
         mostrarAlerta('sucesso', 'Checklist Criado!', 'O novo checklist foi salvo com sucesso.');
       } else {
-        // Extrai a mensagem de erro real vinda da API
         const erroData = await resposta.json();
         mostrarAlerta('erro', 'Erro ao salvar', erroData.error || 'Verifique os dados e tente novamente.');
       }
@@ -106,7 +105,6 @@ export default function CadastroChecklist() {
               />
             </div>
 
-            {/* Novo Select para o Setor */}
             <div className="input-group">
               <label htmlFor="setor">Setor Responsável</label>
               <select
