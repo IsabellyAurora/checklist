@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const execucaoController = require('../controllers/execucaoController');
-const verificarToken = require('../middlewares/authMiddleware'); // Adicionado o middleware JWT
+const verificarToken = require('../middlewares/authMiddleware');
 
 /**
  * @swagger
@@ -28,6 +28,9 @@ const verificarToken = require('../middlewares/authMiddleware'); // Adicionado o
  *               data_conclusao:
  *                 type: string
  *                 format: date-time
+ *               ordem_servico:
+ *                 type: string
+ *                 description: Número da OS vinculada a esta execução (Opcional)
  *               respostas:
  *                 type: array
  *                 items:
@@ -42,8 +45,6 @@ const verificarToken = require('../middlewares/authMiddleware'); // Adicionado o
  *     responses:
  *       201:
  *         description: Respostas salvas com sucesso.
- *       400:
- *         description: Dados inválidos ou faltando informações obrigatórias.
  */
 router.post('/execucoes', verificarToken(), execucaoController.registrarExecucao);
 
@@ -51,7 +52,7 @@ router.post('/execucoes', verificarToken(), execucaoController.registrarExecucao
  * @swagger
  * /execucoes:
  *   get:
- *     summary: Lista o histórico de checklists respondidos (com paginação)
+ *     summary: Lista o histórico de checklists respondidos (com paginação e filtros)
  *     tags: [Execuções]
  *     security:
  *       - bearerAuth: []
@@ -66,6 +67,23 @@ router.post('/execucoes', verificarToken(), execucaoController.registrarExecucao
  *         schema:
  *           type: integer
  *           default: 10
+ *       - in: query
+ *         name: os
+ *         schema:
+ *           type: string
+ *         description: Filtrar por número da Ordem de Serviço
+ *       - in: query
+ *         name: data_inicio
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Ex. 2026-09-01
+ *       - in: query
+ *         name: data_fim
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Ex. 2026-09-30
  *     responses:
  *       200:
  *         description: Histórico de execuções retornado com sucesso.
@@ -89,8 +107,6 @@ router.get('/execucoes', verificarToken(), execucaoController.listar);
  *     responses:
  *       200:
  *         description: Retorna a execução, os dados do checklist e as respostas dadas.
- *       404:
- *         description: Execução não encontrada.
  */
 router.get('/execucoes/:id', verificarToken(), execucaoController.buscarPorId);
 

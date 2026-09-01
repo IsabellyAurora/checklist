@@ -28,10 +28,7 @@ const salvarExecucaoCompleta = async (idChecklist, idUsuario, respostas, dataIni
 
     await client.query('COMMIT');
 
-    return {
-      ...execucao,
-      respostas: respostasSalvas,
-    };
+    return { ...execucao, respostas: respostasSalvas };
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -40,12 +37,34 @@ const salvarExecucaoCompleta = async (idChecklist, idUsuario, respostas, dataIni
   }
 };
 
-const listarExecucoes = async (page = 1, limit = 10) => {
+const listarExecucoes = async (page = 1, limit = 10, filtros = {}) => {
   const offset = (page - 1) * limit;
+  const values = [];
+  const whereConditions = [];
+
+  // 1. Lógica dinâmica para adicionar filtros na query SQL
+  if (filtros.ordem_servico) {
+    values.push(`%${filtros.ordem_servico}%`);
+    whereConditions.push(`e.ordem_servico ILIKE $${values.length}`);
+  }
   
-  const countResult = await pool.query('SELECT COUNT(*) FROM execucao');
+  if (filtros.data_inicio && filtros.data_fim) {
+    values.push(filtros.data_inicio, filtros.data_fim);
+    whereConditions.push(`e.data_conclusao BETWEEN $${values.length - 1} AND $${values.length}`);
+  }
+
+  const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+  // 2. Aplicar os filtros na contagem total para paginação
+  const countQuery = `
+    SELECT COUNT(*) FROM execucao e 
+    JOIN checklist c ON e.id_checklist = c.id_checklist 
+    ${whereClause}
+  `;
+  const countResult = await pool.query(countQuery, values);
   const totalItems = parseInt(countResult.rows[0].count, 10);
 
+  // 3. Consulta principal com filtros e limites
   const query = `
     SELECT 
       e.id_execucao, e.status, e.data_inicio, e.data_conclusao, e.ordem_servico,
@@ -55,11 +74,12 @@ const listarExecucoes = async (page = 1, limit = 10) => {
     FROM execucao e
     JOIN checklist c ON e.id_checklist = c.id_checklist
     JOIN usuario u ON e.id_usuario = u.id_usuario
+    ${whereClause}
     ORDER BY e.data_conclusao DESC
-    LIMIT $1 OFFSET $2
+    LIMIT $${values.length + 1} OFFSET $${values.length + 2}
   `;
   
-  const { rows } = await pool.query(query, [limit, offset]);
+  const { rows } = await pool.query(query, [...values, limit, offset]);
   
   return { totalItems, totalPages: Math.ceil(totalItems / limit), currentPage: page, data: rows };
 };
@@ -89,10 +109,7 @@ const buscarExecucaoPorId = async (idExecucao) => {
     ORDER BY i.ordem ASC
   `, [idExecucao]);
 
-  return {
-    ...execucao,
-    respostas: resRespostas.rows
-  };
+  return { ...execucao, respostas: resRespostas.rows };
 };
 
 module.exports = {

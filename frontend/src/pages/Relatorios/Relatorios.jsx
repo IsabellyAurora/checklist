@@ -9,6 +9,12 @@ export default function Relatorios() {
   const [totalPages, setTotalPages] = useState(1);
   const [detalhes, setDetalhes] = useState(null);
   
+  // NOVOS ESTADOS PARA OS FILTROS
+  const [filtroId, setFiltroId] = useState('');
+  const [filtroUsuario, setFiltroUsuario] = useState('');
+  const [filtroData, setFiltroData] = useState('');
+  const [filtroOs, setFiltroOs] = useState('');
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -63,6 +69,29 @@ export default function Relatorios() {
     window.print();
   };
 
+  // NOVO: Função que filtra a lista atual de execuções com base nos campos preenchidos
+  const execucoesFiltradas = execucoes.filter((exec) => {
+    // Filtro por ID (ex: digita "5" e acha o ID 5)
+    const matchId = filtroId ? String(exec.id_execucao).includes(filtroId) : true;
+
+    // Filtro por Nome do Usuário (case-insensitive)
+    const matchUsuario = filtroUsuario 
+      ? exec.usuario_nome?.toLowerCase().includes(filtroUsuario.toLowerCase()) 
+      : true;
+
+    // Filtro por Data (compara a string ISO ou formato local)
+    const matchData = filtroData 
+      ? exec.data_inicio?.includes(filtroData) || formatarDataHora(exec.data_inicio).includes(filtroData)
+      : true;
+
+    // Filtro por Ordem de Serviço (OS)
+    const matchOs = filtroOs 
+      ? exec.ordem_servico?.toLowerCase().includes(filtroOs.toLowerCase()) 
+      : true;
+
+    return matchId && matchUsuario && matchData && matchOs;
+  });
+
   return (
     <div className="relatorios-container">
       <div className="relatorios-card" style={{ maxWidth: '1100px' }}>
@@ -71,6 +100,65 @@ export default function Relatorios() {
           <>
             <h2>Relatórios de Execução</h2>
             <p>Histórico de todos os checklists preenchidos.</p>
+
+            {/* NOVO: BARRA DE FILTROS */}
+            <div className="filtros-container" style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+              gap: '1rem', 
+              marginBottom: '1.5rem', 
+              backgroundColor: '#f8fafc', 
+              padding: '1rem', 
+              borderRadius: '8px', 
+              border: '1px solid #e2e8f0' 
+            }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '0.3rem', color: '#475569' }}>Filtrar por ID:</label>
+                <input 
+                  type="text" 
+                  placeholder="Ex: 5" 
+                  className="input-padrao" 
+                  value={filtroId}
+                  onChange={(e) => setFiltroId(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', fontSize: '0.9rem' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '0.3rem', color: '#475569' }}>Filtrar por Usuário:</label>
+                <input 
+                  type="text" 
+                  placeholder="Nome do operador..." 
+                  className="input-padrao" 
+                  value={filtroUsuario}
+                  onChange={(e) => setFiltroUsuario(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', fontSize: '0.9rem' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '0.3rem', color: '#475569' }}>Filtrar por Data:</label>
+                <input 
+                  type="date" 
+                  className="input-padrao" 
+                  value={filtroData}
+                  onChange={(e) => setFiltroData(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', fontSize: '0.9rem' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '0.3rem', color: '#475569' }}>Filtrar por OS:</label>
+                <input 
+                  type="text" 
+                  placeholder="Número da OS..." 
+                  className="input-padrao" 
+                  value={filtroOs}
+                  onChange={(e) => setFiltroOs(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', fontSize: '0.9rem' }}
+                />
+              </div>
+            </div>
 
             <div className="tabela-container">
               <table className="tabela-relatorios">
@@ -86,11 +174,15 @@ export default function Relatorios() {
                   </tr>
                 </thead>
                 <tbody>
-                  {execucoes.length > 0 ? (
-                    execucoes.map((exec) => (
+                  {execucoesFiltradas.length > 0 ? (
+                    execucoesFiltradas.map((exec) => (
                       <tr key={exec.id_execucao}>
                         <td className="col-destaque">#{exec.id_execucao}</td>
-                        <td><strong>{exec.checklist_titulo}</strong><br/><small>{exec.setor}</small></td>
+                        <td>
+                          <strong>{exec.checklist_titulo}</strong><br/>
+                          <small>{exec.setor}</small>
+                          {exec.ordem_servico && <><br/><small style={{ color: '#d32f2f', fontWeight: 'bold' }}>OS: {exec.ordem_servico}</small></>}
+                        </td>
                         <td>{exec.usuario_nome}</td>
                         <td>{formatarDataHora(exec.data_inicio)}</td>
                         <td>{formatarDataHora(exec.data_conclusao)}</td>
@@ -109,7 +201,7 @@ export default function Relatorios() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="7" className="tabela-vazia">Nenhuma execução encontrada.</td>
+                      <td colSpan="7" className="tabela-vazia">Nenhuma execução encontrada com esses filtros.</td>
                     </tr>
                   )}
                 </tbody>
@@ -148,7 +240,6 @@ export default function Relatorios() {
               <button 
                 className="no-print"
                 onClick={handleImprimir} 
-                /* Alterado de #1976d2 para #f57c00 (Laranja) */
                 style={{ padding: '0.6rem 1.2rem', backgroundColor: '#f57c00', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
               >
                 🖨️ Imprimir Relatório
@@ -193,7 +284,7 @@ export default function Relatorios() {
             </div>
 
             <div style={{ marginTop: '2rem' }} className="no-print botoes-acao">
-              <button className="btn-voltar-home" style={{ width: '100%' }} onClick={() => setDetalhes(null)}>
+              <button className="btn-voltar-home" style={{ width: '100광역시' }} onClick={() => setDetalhes(null)}>
                 Voltar para a Lista
               </button>
             </div>

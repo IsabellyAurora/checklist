@@ -46,11 +46,20 @@ const registrarExecucao = asyncHandler(async (req, res) => {
 });
 
 const listar = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10 } = req.query;
+  // 1. Extraindo os novos filtros da URL (req.query)
+  const { page = 1, limit = 10, os, data_inicio, data_fim } = req.query;
+  
+  // 2. Agrupando os filtros para enviar ao model
+  const filtros = {
+    ordem_servico: os,
+    data_inicio: data_inicio,
+    data_fim: data_fim
+  };
   
   const execucoesPaginadas = await execucaoModel.listarExecucoes(
     parseInt(page, 10), 
-    parseInt(limit, 10)
+    parseInt(limit, 10),
+    filtros // Repassando os filtros aqui
   );
   
   return res.status(200).json({
@@ -76,8 +85,32 @@ const buscarPorId = asyncHandler(async (req, res) => {
   });
 });
 
+// NOVA FUNÇÃO: Processar o upload da imagem e salvar no banco
+const uploadEvidencia = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!req.file) {
+    return res.status(400).json({ success: false, error: 'Nenhuma imagem enviada.' });
+  }
+
+  // O multer salva o arquivo fisicamente e disponibiliza os dados em req.file
+  const caminhoRelativo = `/uploads/evidencias/${req.file.filename}`;
+
+  // Chama o model para salvar o caminho no banco de dados
+  const evidencia = await execucaoModel.salvarEvidencia(id, caminhoRelativo);
+
+  return res.status(201).json({
+    success: true,
+    data: {
+      mensagem: 'Evidência salva com sucesso!',
+      evidencia
+    }
+  });
+});
+
 module.exports = {
   registrarExecucao,
   listar,
   buscarPorId,
+  uploadEvidencia // Não esqueça de exportar a nova função
 };
