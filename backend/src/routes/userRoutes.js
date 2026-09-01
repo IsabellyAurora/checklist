@@ -1,14 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const execucaoController = require('../controllers/execucaoController');
+const userController = require('../controllers/userController');
 const verificarToken = require('../middlewares/authMiddleware');
 
 /**
  * @swagger
- * /execucoes:
+ * /usuarios:
  *   post:
- *     summary: Salva as respostas de um checklist preenchido por um usuário
- *     tags: [Execuções]
+ *     summary: Cadastra um novo usuário (Apenas Admin)
+ *     tags: [Usuários]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -18,44 +18,26 @@ const verificarToken = require('../middlewares/authMiddleware');
  *           schema:
  *             type: object
  *             properties:
- *               id_checklist:
- *                 type: integer
- *               id_usuario:
- *                 type: integer
- *               data_inicio:
+ *               nome:
  *                 type: string
- *                 format: date-time
- *               data_conclusao:
+ *               email:
  *                 type: string
- *                 format: date-time
- *               ordem_servico:
+ *               senha:
  *                 type: string
- *                 description: Número da OS vinculada a esta execução (Opcional)
- *               respostas:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     id_item:
- *                       type: integer
- *                     valor_resposta:
- *                       type: string
- *                     observacao:
- *                       type: string
+ *               setor:
+ *                 type: string
  *     responses:
  *       201:
- *         description: Respostas salvas com sucesso.
- *       400:
- *         description: Dados inválidos ou faltando informações obrigatórias.
+ *         description: Usuário cadastrado com sucesso.
  */
-router.post('/execucoes', verificarToken(), execucaoController.registrarExecucao);
+router.post('/usuarios', verificarToken(['admin']), userController.cadastrarUsuario);
 
 /**
  * @swagger
- * /execucoes:
+ * /usuarios:
  *   get:
- *     summary: Lista o histórico de checklists respondidos (com paginação)
- *     tags: [Execuções]
+ *     summary: Lista todos os usuários cadastrados (Apenas Admin)
+ *     tags: [Usuários]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -71,16 +53,16 @@ router.post('/execucoes', verificarToken(), execucaoController.registrarExecucao
  *           default: 10
  *     responses:
  *       200:
- *         description: Histórico de execuções retornado com sucesso.
+ *         description: Retorna a lista paginada de usuários.
  */
-router.get('/execucoes', verificarToken(), execucaoController.listar);
+router.get('/usuarios', verificarToken(['admin']), userController.getUsuarios);
 
 /**
  * @swagger
- * /execucoes/{id}:
- *   get:
- *     summary: Detalha uma execução específica com todas as perguntas e respostas
- *     tags: [Execuções]
+ * /usuarios/{id}/resetar-senha:
+ *   put:
+ *     summary: Reseta a senha de um usuário para um valor padrão (Apenas Admin)
+ *     tags: [Usuários]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -91,10 +73,103 @@ router.get('/execucoes', verificarToken(), execucaoController.listar);
  *           type: integer
  *     responses:
  *       200:
- *         description: Retorna a execução, os dados do checklist e as respostas dadas.
- *       404:
- *         description: Execução não encontrada.
+ *         description: Senha resetada e flag ativada com sucesso.
  */
-router.get('/execucoes/:id', verificarToken(), execucaoController.buscarPorId);
+router.put('/usuarios/:id/resetar-senha', verificarToken(['admin']), userController.resetarSenha);
+
+/**
+ * @swagger
+ * /usuarios/{id}/senha:
+ *   put:
+ *     summary: Altera a senha do próprio usuário
+ *     tags: [Usuários]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               senha_atual:
+ *                 type: string
+ *               nova_senha:
+ *                 type: string
+ *               confirmacao_senha:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Senha alterada com sucesso.
+ */
+router.put('/usuarios/:id/senha', verificarToken(), userController.alterarMinhaSenha);
+
+/**
+ * @swagger
+ * /usuarios/{id}/senha-obrigatoria:
+ *   put:
+ *     summary: Conclui a troca de senha obrigatória
+ *     tags: [Usuários]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               nova_senha:
+ *                 type: string
+ *               confirmacao_senha:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Senha alterada com sucesso.
+ */
+router.put('/usuarios/:id/senha-obrigatoria', verificarToken(), userController.trocarSenhaObrigatoria);
+
+/**
+ * @swagger
+ * /usuarios/{id}/status:
+ *   put:
+ *     summary: Ativa ou inativa um usuário (Soft Delete) - Apenas Admin
+ *     tags: [Usuários]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ativo:
+ *                 type: boolean
+ *             example:
+ *               ativo: false
+ *     responses:
+ *       200:
+ *         description: Status do usuário alterado com sucesso.
+ */
+router.put('/usuarios/:id/status', verificarToken(['admin']), userController.alternarStatus);
 
 module.exports = router;
