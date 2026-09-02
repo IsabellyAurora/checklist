@@ -1,69 +1,71 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchWithAuth } from '../../utils/api'; 
 import './PreencherChecklist.css';
 
+const carregarRascunho = () => {
+  try {
+    const rascunho = sessionStorage.getItem('checklistRascunho');
+    return rascunho ? JSON.parse(rascunho) : null;
+  } catch (e) {
+    return null;
+  }
+};
+
 export default function PreencherChecklist() {
-  const [usuario, setUsuario] = useState(null);
+  const rascunho = carregarRascunho();
+
+  const [usuario, setUsuario] = useState(() => {
+    const userData = localStorage.getItem('usuarioLogado');
+    return userData ? JSON.parse(userData) : null;
+  });
+  
   const [checklistsDisponiveis, setChecklistsDisponiveis] = useState([]);
-  const [idChecklistSelecionado, setIdChecklistSelecionado] = useState('');
-  
-  const [busca, setBusca] = useState('');
+  const [idChecklistSelecionado, setIdChecklistSelecionado] = useState(rascunho?.idChecklistSelecionado || '');
+  const [busca, setBusca] = useState(rascunho?.busca || '');
+  const [checklistAtual, setChecklistAtual] = useState(rascunho?.checklistAtual || null);
+  const [respostas, setRespostas] = useState(rascunho?.respostas || {});
+  const [dataInicio, setDataInicio] = useState(rascunho?.dataInicio || null);
+  const [ordemServico, setOrdemServico] = useState(rascunho?.ordemServico || '');
+
   const [dropdownAberto, setDropdownAberto] = useState(false);
-  
-  const [checklistAtual, setChecklistAtual] = useState(null);
-  const [respostas, setRespostas] = useState({});
   const [alerta, setAlerta] = useState({ visivel: false, tipo: '', titulo: '', mensagem: '' });
-  
-  const [dataInicio, setDataInicio] = useState(null);
-  const [ordemServico, setOrdemServico] = useState('');
   const [imagemAmpliada, setImagemAmpliada] = useState(null);
 
   const navigate = useNavigate();
 
+  // MÁGICA AQUI: useLayoutEffect roda ANTES do navegador "pintar" a tela. 
+  // Isso elimina 100% o piscar e o pulo.
+  useLayoutEffect(() => {
+    const scrollSalvo = sessionStorage.getItem('scrollChecklist');
+    if (scrollSalvo && checklistAtual) {
+      window.scrollTo({ top: parseInt(scrollSalvo), behavior: 'instant' });
+      sessionStorage.removeItem('scrollChecklist'); 
+    }
+  }, [checklistAtual]);
+
   useEffect(() => {
-    const userData = localStorage.getItem('usuarioLogado');
-    if (userData) {
-      const parsedUser = JSON.parse(userData);
-      setUsuario(parsedUser);
-      carregarChecklistsDoSetor(parsedUser.setor);
-    } else {
+    if (!usuario) {
       navigate('/');
+    } else {
+      carregarChecklistsDoSetor(usuario.setor);
     }
-  }, [navigate]);
+  }, [navigate, usuario]);
 
-  // RECUPERAR RASCUNHO (Agora recupera as fotos também!)
-  useEffect(() => {
-    const rascunho = sessionStorage.getItem('checklistRascunho');
-    if (rascunho) {
-      try {
-        const dados = JSON.parse(rascunho);
-        if (dados.idChecklistSelecionado) {
-          setIdChecklistSelecionado(dados.idChecklistSelecionado);
-          setChecklistAtual(dados.checklistAtual);
-          setRespostas(dados.respostas);
-          setDataInicio(dados.dataInicio);
-          setOrdemServico(dados.ordemServico);
-          setBusca(dados.busca);
-        }
-      } catch (e) {
-        console.error("Erro ao recuperar rascunho", e);
-      }
-    }
-  }, []);
-
-  // SALVAR RASCUNHO AUTOMATICAMENTE
   useEffect(() => {
     if (checklistAtual) {
-      // Como as fotos agora são comprimidas, podemos salvar tudo no rascunho
-      sessionStorage.setItem('checklistRascunho', JSON.stringify({
-        idChecklistSelecionado,
-        checklistAtual,
-        respostas, 
-        dataInicio,
-        ordemServico,
-        busca
-      }));
+      try {
+        sessionStorage.setItem('checklistRascunho', JSON.stringify({
+          idChecklistSelecionado,
+          checklistAtual,
+          respostas, 
+          dataInicio,
+          ordemServico,
+          busca
+        }));
+      } catch (e) {
+        console.error("Erro ao salvar rascunho.", e);
+      }
     }
   }, [checklistAtual, respostas, dataInicio, ordemServico, idChecklistSelecionado, busca]);
 
@@ -97,7 +99,7 @@ export default function PreencherChecklist() {
       setChecklistAtual(null);
       setDataInicio(null);
       setOrdemServico('');
-      sessionStorage.removeItem('checklistRascunho');
+      sessionStorage.removeItem('checklistRascunho'); 
     }
   };
 
@@ -130,7 +132,7 @@ export default function PreencherChecklist() {
             respostasIniciais[item.id_item] = { 
               valor_resposta: '', 
               observacao: '', 
-              fotoBase64: null, // Armazena a imagem leve
+              fotoBase64: null,
               fotoNome: ''
             };
           });
@@ -153,7 +155,6 @@ export default function PreencherChecklist() {
     }));
   };
 
-  // FUNÇÃO MÁGICA: Comprime a imagem pesada para não travar o celular do manutentor
   const comprimirImagemEGerarBase64 = (arquivo) => {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -163,8 +164,8 @@ export default function PreencherChecklist() {
         img.src = event.target.result;
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 800; // Tamanho ideal para relatório
-          const MAX_HEIGHT = 800;
+          const MAX_WIDTH = 640; 
+          const MAX_HEIGHT = 640;
           let width = img.width;
           let height = img.height;
 
@@ -184,8 +185,7 @@ export default function PreencherChecklist() {
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
 
-          // Gera a imagem leve (Qualidade 70%)
-          const base64Comprimido = canvas.toDataURL('image/jpeg', 0.7);
+          const base64Comprimido = canvas.toDataURL('image/jpeg', 0.6);
           resolve(base64Comprimido);
         };
       };
@@ -195,7 +195,6 @@ export default function PreencherChecklist() {
   const handleFotoItemChange = async (idItem, e) => {
     const arquivo = e.target.files[0];
     if (arquivo) {
-      // Ao invés de travar a tela carregando a foto de 15MB, comprime ela em milissegundos
       const fotoLeveBase64 = await comprimirImagemEGerarBase64(arquivo);
       
       setRespostas(prev => ({
@@ -209,7 +208,6 @@ export default function PreencherChecklist() {
     }
   };
 
-  // FUNÇÃO PARA ENVIAR AS FOTOS: Transforma o Base64 leve de volta em arquivo (Blob) para o Multer do backend
   const base64ToBlob = (base64) => {
     const byteCharacters = atob(base64.split(',')[1]);
     const byteNumbers = new Array(byteCharacters.length);
@@ -250,7 +248,6 @@ export default function PreencherChecklist() {
         const resultadoJson = await response.json();
         const respostasSalvas = resultadoJson.data?.execucao?.respostas || resultadoJson.data?.respostas || [];
 
-        // Envia as fotos leves geradas
         for (const [id_item, dados] of Object.entries(respostas)) {
           if (dados.fotoBase64) {
             const respostaCorrespondente = respostasSalvas.find(r => r.id_item === Number(id_item));
@@ -268,7 +265,7 @@ export default function PreencherChecklist() {
           }
         }
 
-        sessionStorage.removeItem('checklistRascunho'); // SUCESSO: Limpa o rascunho!
+        sessionStorage.removeItem('checklistRascunho'); 
         mostrarAlerta('sucesso', 'Checklist Concluído!', 'Suas respostas e evidências foram salvas.');
       } else {
         mostrarAlerta('erro', 'Erro ao salvar', 'Ocorreu um erro ao enviar o checklist.');
@@ -284,6 +281,10 @@ export default function PreencherChecklist() {
     const buscaSegura = busca ? busca.toLowerCase() : '';
     return tituloSeguro.includes(buscaSegura);
   });
+
+  const salvarPosicaoScroll = () => {
+    sessionStorage.setItem('scrollChecklist', window.scrollY.toString());
+  };
 
   return (
     <div className="preencher-container">
@@ -418,7 +419,10 @@ export default function PreencherChecklist() {
 
                         <div className="evidencia-container" style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginTop: '0.3rem', borderTop: '1px dashed #e2e8f0', paddingTop: '0.8rem' }}>
                           
-                          <label htmlFor={`camera-input-${item.id_item}`} style={{ cursor: 'pointer', backgroundColor: '#0284c7', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '4px', fontSize: '0.85rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <label 
+                            htmlFor={`camera-input-${item.id_item}`} 
+                            onClick={salvarPosicaoScroll}
+                            style={{ cursor: 'pointer', backgroundColor: '#0284c7', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '4px', fontSize: '0.85rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                             📸 Tirar Foto
                           </label>
                           <input
@@ -430,7 +434,10 @@ export default function PreencherChecklist() {
                             style={{ display: 'none' }}
                           />
 
-                          <label htmlFor={`galeria-input-${item.id_item}`} style={{ cursor: 'pointer', backgroundColor: '#64748b', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '4px', fontSize: '0.85rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <label 
+                            htmlFor={`galeria-input-${item.id_item}`} 
+                            onClick={salvarPosicaoScroll}
+                            style={{ cursor: 'pointer', backgroundColor: '#64748b', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '4px', fontSize: '0.85rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                             📁 Escolher da Galeria
                           </label>
                           <input
