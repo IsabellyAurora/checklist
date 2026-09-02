@@ -23,6 +23,7 @@ export default function PreencherChecklist() {
 
   const navigate = useNavigate();
 
+  // 1. CARREGAMENTO INICIAL DO USUÁRIO
   useEffect(() => {
     const userData = localStorage.getItem('usuarioLogado');
     if (userData) {
@@ -33,6 +34,52 @@ export default function PreencherChecklist() {
       navigate('/');
     }
   }, [navigate]);
+
+  // 2. NOVO: RECUPERAR RASCUNHO SE A PÁGINA RECARREGAR (BUG DA CÂMERA DO CELULAR)
+  useEffect(() => {
+    const rascunho = sessionStorage.getItem('checklistRascunho');
+    if (rascunho) {
+      try {
+        const dados = JSON.parse(rascunho);
+        if (dados.idChecklistSelecionado) {
+          setIdChecklistSelecionado(dados.idChecklistSelecionado);
+          setChecklistAtual(dados.checklistAtual);
+          setRespostas(dados.respostas);
+          setDataInicio(dados.dataInicio);
+          setOrdemServico(dados.ordemServico);
+          setBusca(dados.busca);
+        }
+      } catch (e) {
+        console.error("Erro ao recuperar rascunho", e);
+      }
+    }
+  }, []);
+
+  // 3. NOVO: SALVAR RASCUNHO AUTOMATICAMENTE A CADA MUDANÇA
+  useEffect(() => {
+    if (checklistAtual) {
+      // Como arquivos de imagem não podem ser salvos no texto do storage, 
+      // copiamos apenas os textos para o usuário não perder a tela atual se o celular recarregar
+      const respostasSemFoto = {};
+      Object.keys(respostas).forEach(key => {
+        respostasSemFoto[key] = {
+          ...respostas[key],
+          foto: null, 
+          fotoPreview: null
+        };
+      });
+
+      sessionStorage.setItem('checklistRascunho', JSON.stringify({
+        idChecklistSelecionado,
+        checklistAtual,
+        respostas: respostasSemFoto,
+        dataInicio,
+        ordemServico,
+        busca
+      }));
+    }
+  }, [checklistAtual, respostas, dataInicio, ordemServico, idChecklistSelecionado, busca]);
+
 
   const mostrarAlerta = (tipo, titulo, mensagem) => {
     setAlerta({ visivel: true, tipo, titulo, mensagem });
@@ -48,11 +95,6 @@ export default function PreencherChecklist() {
       const response = await fetchWithAuth(`/api/checklists?setor=${setor}`);
       if (response.ok) {
         const json = await response.json();
-        
-        // Log para espiar o que o backend mandou
-        console.log("CHECKLISTS QUE VIERAM DO BACKEND:", json.data);
-        
-        // Mantido sem filtro de 'ativo' temporariamente para validação
         setChecklistsDisponiveis(json.data || []);
       }
     } catch (erro) {
@@ -69,6 +111,7 @@ export default function PreencherChecklist() {
       setChecklistAtual(null);
       setDataInicio(null);
       setOrdemServico('');
+      sessionStorage.removeItem('checklistRascunho'); // Limpa o rascunho se apagar a busca
     }
   };
 
@@ -94,7 +137,6 @@ export default function PreencherChecklist() {
         const dados = json.data || json;
         setChecklistAtual(dados);
         
-        // Salva a hora local real no início do preenchimento
         setDataInicio(obterDataHoraLocal());
         
         const respostasIniciais = {};
@@ -126,7 +168,6 @@ export default function PreencherChecklist() {
     }));
   };
 
-  // Função para capturar a foto (Câmera ou Galeria)
   const handleFotoItemChange = (idItem, e) => {
     const arquivo = e.target.files[0];
     if (arquivo) {
@@ -144,7 +185,6 @@ export default function PreencherChecklist() {
   const handleEnviarChecklist = async (e) => {
     e.preventDefault();
     
-    // Usa a função para salvar a hora local real da conclusão
     const dataConclusao = obterDataHoraLocal();
 
     const payloadPrincipal = {
@@ -189,6 +229,7 @@ export default function PreencherChecklist() {
           }
         }
 
+        sessionStorage.removeItem('checklistRascunho'); // SUCESSO: Limpa o rascunho!
         mostrarAlerta('sucesso', 'Checklist Concluído!', 'Suas respostas e evidências foram salvas com sucesso.');
       } else {
         mostrarAlerta('erro', 'Erro ao salvar', 'Ocorreu um erro ao enviar o checklist.');
@@ -402,7 +443,16 @@ export default function PreencherChecklist() {
             </div>
 
             <div className="botoes-acao">
-              <button type="button" className="btn-voltar" onClick={() => { setChecklistAtual(null); setBusca(''); setIdChecklistSelecionado(''); setOrdemServico(''); }}>
+              <button 
+                type="button" 
+                className="btn-voltar" 
+                onClick={() => { 
+                  setChecklistAtual(null); 
+                  setBusca(''); 
+                  setIdChecklistSelecionado(''); 
+                  setOrdemServico(''); 
+                  sessionStorage.removeItem('checklistRascunho'); // Clicou em cancelar, limpa o rascunho
+                }}>
                 Cancelar
               </button>
               <button type="submit" className="btn-salvar" disabled={!checklistAtual.itens?.length}>
