@@ -17,13 +17,10 @@ export default function PreencherChecklist() {
   
   const [dataInicio, setDataInicio] = useState(null);
   const [ordemServico, setOrdemServico] = useState('');
-
-  // Estado para controlar a imagem ampliada no modal
   const [imagemAmpliada, setImagemAmpliada] = useState(null);
 
   const navigate = useNavigate();
 
-  // 1. CARREGAMENTO INICIAL DO USUÁRIO
   useEffect(() => {
     const userData = localStorage.getItem('usuarioLogado');
     if (userData) {
@@ -35,7 +32,7 @@ export default function PreencherChecklist() {
     }
   }, [navigate]);
 
-  // 2. NOVO: RECUPERAR RASCUNHO SE A PÁGINA RECARREGAR (BUG DA CÂMERA DO CELULAR)
+  // RECUPERAR RASCUNHO (Agora recupera as fotos também!)
   useEffect(() => {
     const rascunho = sessionStorage.getItem('checklistRascunho');
     if (rascunho) {
@@ -55,31 +52,20 @@ export default function PreencherChecklist() {
     }
   }, []);
 
-  // 3. NOVO: SALVAR RASCUNHO AUTOMATICAMENTE A CADA MUDANÇA
+  // SALVAR RASCUNHO AUTOMATICAMENTE
   useEffect(() => {
     if (checklistAtual) {
-      // Como arquivos de imagem não podem ser salvos no texto do storage, 
-      // copiamos apenas os textos para o usuário não perder a tela atual se o celular recarregar
-      const respostasSemFoto = {};
-      Object.keys(respostas).forEach(key => {
-        respostasSemFoto[key] = {
-          ...respostas[key],
-          foto: null, 
-          fotoPreview: null
-        };
-      });
-
+      // Como as fotos agora são comprimidas, podemos salvar tudo no rascunho
       sessionStorage.setItem('checklistRascunho', JSON.stringify({
         idChecklistSelecionado,
         checklistAtual,
-        respostas: respostasSemFoto,
+        respostas, 
         dataInicio,
         ordemServico,
         busca
       }));
     }
   }, [checklistAtual, respostas, dataInicio, ordemServico, idChecklistSelecionado, busca]);
-
 
   const mostrarAlerta = (tipo, titulo, mensagem) => {
     setAlerta({ visivel: true, tipo, titulo, mensagem });
@@ -111,11 +97,10 @@ export default function PreencherChecklist() {
       setChecklistAtual(null);
       setDataInicio(null);
       setOrdemServico('');
-      sessionStorage.removeItem('checklistRascunho'); // Limpa o rascunho se apagar a busca
+      sessionStorage.removeItem('checklistRascunho');
     }
   };
 
-  // Função para pegar a hora local exata sem somar as 3h do UTC
   const obterDataHoraLocal = () => {
     const data = new Date();
     const deslocamento = data.getTimezoneOffset() * 60000;
@@ -145,16 +130,16 @@ export default function PreencherChecklist() {
             respostasIniciais[item.id_item] = { 
               valor_resposta: '', 
               observacao: '', 
-              foto: null, 
-              fotoPreview: null 
+              fotoBase64: null, // Armazena a imagem leve
+              fotoNome: ''
             };
           });
         }
         setRespostas(respostasIniciais);
       }
     } catch (erro) {
-      console.error('Erro ao carregar detalhes do checklist:', erro);
-      mostrarAlerta('erro', 'Erro', 'Não foi possível carregar as perguntas deste checklist.');
+      console.error('Erro ao carregar checklist:', erro);
+      mostrarAlerta('erro', 'Erro', 'Não foi possível carregar as perguntas.');
     }
   };
 
@@ -168,23 +153,75 @@ export default function PreencherChecklist() {
     }));
   };
 
-  const handleFotoItemChange = (idItem, e) => {
+  // FUNÇÃO MÁGICA: Comprime a imagem pesada para não travar o celular do manutentor
+  const comprimirImagemEGerarBase64 = (arquivo) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(arquivo);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800; // Tamanho ideal para relatório
+          const MAX_HEIGHT = 800;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height = Math.round((height *= MAX_WIDTH / width));
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width = Math.round((width *= MAX_HEIGHT / height));
+              height = MAX_HEIGHT;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Gera a imagem leve (Qualidade 70%)
+          const base64Comprimido = canvas.toDataURL('image/jpeg', 0.7);
+          resolve(base64Comprimido);
+        };
+      };
+    });
+  };
+
+  const handleFotoItemChange = async (idItem, e) => {
     const arquivo = e.target.files[0];
     if (arquivo) {
+      // Ao invés de travar a tela carregando a foto de 15MB, comprime ela em milissegundos
+      const fotoLeveBase64 = await comprimirImagemEGerarBase64(arquivo);
+      
       setRespostas(prev => ({
         ...prev,
         [idItem]: {
           ...prev[idItem],
-          foto: arquivo,
-          fotoPreview: URL.createObjectURL(arquivo)
+          fotoBase64: fotoLeveBase64,
+          fotoNome: arquivo.name || `evidencia_${idItem}.jpg`
         }
       }));
     }
   };
 
+  // FUNÇÃO PARA ENVIAR AS FOTOS: Transforma o Base64 leve de volta em arquivo (Blob) para o Multer do backend
+  const base64ToBlob = (base64) => {
+    const byteCharacters = atob(base64.split(',')[1]);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    return new Blob([byteArray], { type: 'image/jpeg' });
+  };
+
   const handleEnviarChecklist = async (e) => {
     e.preventDefault();
-    
     const dataConclusao = obterDataHoraLocal();
 
     const payloadPrincipal = {
@@ -213,13 +250,15 @@ export default function PreencherChecklist() {
         const resultadoJson = await response.json();
         const respostasSalvas = resultadoJson.data?.execucao?.respostas || resultadoJson.data?.respostas || [];
 
+        // Envia as fotos leves geradas
         for (const [id_item, dados] of Object.entries(respostas)) {
-          if (dados.foto) {
+          if (dados.fotoBase64) {
             const respostaCorrespondente = respostasSalvas.find(r => r.id_item === Number(id_item));
             
             if (respostaCorrespondente && respostaCorrespondente.id_resposta) {
               const formDataFoto = new FormData();
-              formDataFoto.append('imagem', dados.foto);
+              const arquivoBlob = base64ToBlob(dados.fotoBase64);
+              formDataFoto.append('imagem', arquivoBlob, dados.fotoNome);
 
               await fetchWithAuth(`/api/respostas/${respostaCorrespondente.id_resposta}/imagem`, {
                 method: 'POST',
@@ -230,7 +269,7 @@ export default function PreencherChecklist() {
         }
 
         sessionStorage.removeItem('checklistRascunho'); // SUCESSO: Limpa o rascunho!
-        mostrarAlerta('sucesso', 'Checklist Concluído!', 'Suas respostas e evidências foram salvas com sucesso.');
+        mostrarAlerta('sucesso', 'Checklist Concluído!', 'Suas respostas e evidências foram salvas.');
       } else {
         mostrarAlerta('erro', 'Erro ao salvar', 'Ocorreu um erro ao enviar o checklist.');
       }
@@ -254,7 +293,6 @@ export default function PreencherChecklist() {
 
         <div className="selecao-checklist" style={{ position: 'relative' }}>
           <label htmlFor="busca-checklist">Busque ou selecione uma tarefa:</label>
-          
           <input
             type="text"
             id="busca-checklist"
@@ -315,7 +353,6 @@ export default function PreencherChecklist() {
 
                   return (
                     <div key={item.id_item} className="pergunta-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '1rem', backgroundColor: '#fff' }}>
-                      
                       <p className="pergunta-texto">
                         <strong>{item.ordem}.</strong> {item.descricao} 
                         {item.obrigatorio && <span className="asterisco"> *</span>}
@@ -404,24 +441,24 @@ export default function PreencherChecklist() {
                             style={{ display: 'none' }}
                           />
 
-                          {respostas[item.id_item]?.fotoPreview && (
+                          {respostas[item.id_item]?.fotoBase64 && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#f1f5f9', padding: '0.3rem 0.6rem', borderRadius: '4px' }}>
                               <img 
-                                src={respostas[item.id_item].fotoPreview} 
+                                src={respostas[item.id_item].fotoBase64} 
                                 alt="Evidência" 
                                 title="Clique para ampliar"
-                                onClick={() => setImagemAmpliada(respostas[item.id_item].fotoPreview)}
+                                onClick={() => setImagemAmpliada(respostas[item.id_item].fotoBase64)}
                                 style={{ width: '35px', height: '35px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '1px solid #cbd5e1' }}
                               />
                               <span style={{ fontSize: '0.8rem', color: '#334155', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {respostas[item.id_item].foto.name}
+                                {respostas[item.id_item].fotoNome}
                               </span>
                               <button 
                                 type="button" 
                                 onClick={() => {
                                   setRespostas(prev => ({
                                     ...prev,
-                                    [item.id_item]: { ...prev[item.id_item], foto: null, fotoPreview: null }
+                                    [item.id_item]: { ...prev[item.id_item], fotoBase64: null, fotoNome: '' }
                                   }));
                                 }}
                                 style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
@@ -451,7 +488,7 @@ export default function PreencherChecklist() {
                   setBusca(''); 
                   setIdChecklistSelecionado(''); 
                   setOrdemServico(''); 
-                  sessionStorage.removeItem('checklistRascunho'); // Clicou em cancelar, limpa o rascunho
+                  sessionStorage.removeItem('checklistRascunho'); 
                 }}>
                 Cancelar
               </button>
