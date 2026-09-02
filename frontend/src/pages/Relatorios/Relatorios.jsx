@@ -6,7 +6,6 @@ import './Relatorios.css';
 export default function Relatorios() {
   const [execucoes, setExecucoes] = useState([]);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [detalhes, setDetalhes] = useState(null);
   
   // ESTADOS PARA OS FILTROS
@@ -20,22 +19,27 @@ export default function Relatorios() {
 
   const navigate = useNavigate();
 
+  // 1. Volta para a página 1 toda vez que o usuário digitar em algum filtro
   useEffect(() => {
-    carregarExecucoes();
-  }, [page]);
+    setPage(1);
+  }, [filtroId, filtroUsuario, filtroData, filtroOs]);
 
-  const carregarExecucoes = async () => {
+  // 2. Carrega TODOS os registros apenas UMA vez ao abrir a tela
+  useEffect(() => {
+    carregarTodasExecucoes();
+  }, []);
+
+  const carregarTodasExecucoes = async () => {
     try {
-      const resposta = await fetchWithAuth(`/api/execucoes?page=${page}&limit=10`);
+      // Pedimos um limite altíssimo para o backend trazer tudo e podermos filtrar no front
+      const resposta = await fetchWithAuth(`/api/execucoes?page=1&limit=5000`);
       if (resposta.ok) {
         const json = await resposta.json();
         const listaBruta = json.data || [];
         
-        // Ordena para garantir que os IDs mais altos (mais recentes) apareçam primeiro
+        // Ordena do mais novo para o mais antigo
         const listaOrdenada = listaBruta.sort((a, b) => b.id_execucao - a.id_execucao);
-
         setExecucoes(listaOrdenada);
-        setTotalPages(json.totalPages || 1);
       }
     } catch (erro) {
       console.error('Erro ao buscar histórico:', erro);
@@ -56,6 +60,7 @@ export default function Relatorios() {
     }
   };
 
+  // Trava blindada contra as 3 horas a mais do fuso horário
   const formatarDataHora = (dataIso) => {
     if (!dataIso) return '-';
     const data = new Date(dataIso);
@@ -77,6 +82,7 @@ export default function Relatorios() {
     window.print();
   };
 
+  // 3. Aplica os filtros em TODA a base de dados que está na memória
   const execucoesFiltradas = execucoes.filter((exec) => {
     const matchId = filtroId ? String(exec.id_execucao).includes(filtroId) : true;
     const matchUsuario = filtroUsuario 
@@ -91,6 +97,14 @@ export default function Relatorios() {
 
     return matchId && matchUsuario && matchData && matchOs;
   });
+
+  // 4. LÓGICA DE PAGINAÇÃO NO FRONT-END
+  const itensPorPagina = 10;
+  const totalPages = Math.ceil(execucoesFiltradas.length / itensPorPagina) || 1;
+  const indexInicio = (page - 1) * itensPorPagina;
+  const indexFim = indexInicio + itensPorPagina;
+  // Pega apenas os 10 itens correspondentes à página atual
+  const execucoesPaginadas = execucoesFiltradas.slice(indexInicio, indexFim);
 
   return (
     <div className="relatorios-container">
@@ -173,8 +187,8 @@ export default function Relatorios() {
                   </tr>
                 </thead>
                 <tbody>
-                  {execucoesFiltradas.length > 0 ? (
-                    execucoesFiltradas.map((exec) => (
+                  {execucoesPaginadas.length > 0 ? (
+                    execucoesPaginadas.map((exec) => (
                       <tr key={exec.id_execucao}>
                         <td className="col-destaque">#{exec.id_execucao}</td>
                         <td>
