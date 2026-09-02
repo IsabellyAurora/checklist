@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const checklistController = require('../controllers/checklistController');
 const checkAdmin = require('../middlewares/checkAdmin');
+const { uploadReferencia } = require('../middlewares/uploadMiddleware');
+const verificarToken = require('../middlewares/authMiddleware'); // Linha adicionada
 
 /**
  * @swagger
@@ -193,4 +195,33 @@ router.put('/checklists/:id', checkAdmin, checklistController.atualizarChecklist
  */
 router.delete('/checklists/:id', checkAdmin, checklistController.excluirChecklist);
 
+/**
+ * @swagger
+ * /checklists/itens/{id_item}/referencia:
+ *   post:
+ *     summary: Anexa uma foto de referência (padrão visual) para uma pergunta do checklist
+ *     tags: [Checklists]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id_item
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               imagem:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Imagem de referência salva com sucesso.
+ */
+router.post('/checklists/itens/:id_item/referencia', verificarToken(), uploadReferencia.single('imagem'), checklistController.uploadReferenciaItem);
 module.exports = router;

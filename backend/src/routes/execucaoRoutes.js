@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const execucaoController = require('../controllers/execucaoController');
 const verificarToken = require('../middlewares/authMiddleware');
+const { uploadEvidencia } = require('../middlewares/uploadMiddleware');
 
 /**
  * @swagger
@@ -30,7 +31,6 @@ const verificarToken = require('../middlewares/authMiddleware');
  *                 format: date-time
  *               ordem_servico:
  *                 type: string
- *                 description: Número da OS vinculada a esta execução (Opcional)
  *               respostas:
  *                 type: array
  *                 items:
@@ -71,19 +71,16 @@ router.post('/execucoes', verificarToken(), execucaoController.registrarExecucao
  *         name: os
  *         schema:
  *           type: string
- *         description: Filtrar por número da Ordem de Serviço
  *       - in: query
  *         name: data_inicio
  *         schema:
  *           type: string
  *           format: date
- *         description: Ex. 2026-09-01
  *       - in: query
  *         name: data_fim
  *         schema:
  *           type: string
  *           format: date
- *         description: Ex. 2026-09-30
  *     responses:
  *       200:
  *         description: Histórico de execuções retornado com sucesso.
@@ -106,8 +103,38 @@ router.get('/execucoes', verificarToken(), execucaoController.listar);
  *           type: integer
  *     responses:
  *       200:
- *         description: Retorna a execução, os dados do checklist e as respostas dadas.
+ *         description: Retorna a execução.
  */
 router.get('/execucoes/:id', verificarToken(), execucaoController.buscarPorId);
+
+/**
+ * @swagger
+ * /respostas/{id_resposta}/imagem:
+ *   post:
+ *     summary: Anexa uma foto (evidência) a uma resposta específica
+ *     tags: [Execuções]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id_resposta
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               imagem:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Imagem anexada com sucesso.
+ */
+router.post('/respostas/:id_resposta/imagem', verificarToken(), uploadEvidencia.single('imagem'), execucaoController.uploadEvidenciaResposta);
 
 module.exports = router;

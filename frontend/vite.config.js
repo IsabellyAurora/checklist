@@ -10,6 +10,11 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:3000', // Troque pela porta que o backend estiver rodando
         changeOrigin: true,
+      },
+      // NOVO: Proxy para as fotos
+      '/uploads': {
+        target: 'http://127.0.0.1:3000', // A mesma porta do seu backend
+        changeOrigin: true,
       }
     }
   }

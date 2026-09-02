@@ -2,20 +2,34 @@ export async function fetchWithAuth(url, options = {}) {
   // Pega o token salvo no login
   let token = localStorage.getItem('accessToken');
 
+  // 1. Pega os headers que já vieram nas opções
+  const headers = {
+    ...options.headers,
+  };
+
+  // 2. A MÁGICA PARA O UPLOAD DE IMAGEM FUNCIONAR:
+  // Se o corpo da requisição NÃO for um arquivo (FormData), definimos como JSON.
+  // Mas se for FormData, deixamos sem Content-Type para o navegador criar o boundary automático!
+  if (options.body && options.body instanceof FormData) {
+    delete headers['Content-Type']; 
+  } else {
+    // Se não for FormData, garante que é JSON (caso não tenham passado outro)
+    if (!headers['Content-Type']) {
+      headers['Content-Type'] = 'application/json';
+    }
+  }
+
+  // Se o token existir, injeta no header
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   // Monta as configurações da requisição (Passos 1 e 3)
   const config = {
     ...options,
     credentials: 'include', // Obrigatório para enviar/receber o Cookie do Refresh Token
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    }
+    headers: headers // Usa os headers que preparamos inteligentemente ali em cima
   };
-
-  // Se o token existir, injeta no header
-  if (token) {
-    config.headers['Authorization'] = `Bearer ${token}`;
-  }
 
   // Faz a requisição original
   let response = await fetch(url, config);

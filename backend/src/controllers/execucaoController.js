@@ -85,9 +85,9 @@ const buscarPorId = asyncHandler(async (req, res) => {
   });
 });
 
-// NOVA FUNÇÃO: Processar o upload da imagem e salvar no banco
-const uploadEvidencia = asyncHandler(async (req, res) => {
-  const { id } = req.params;
+// FUNÇÃO ATUALIZADA: Processar o upload da imagem e salvar diretamente na resposta
+const uploadEvidenciaResposta = asyncHandler(async (req, res) => {
+  const { id_resposta } = req.params;
 
   if (!req.file) {
     return res.status(400).json({ success: false, error: 'Nenhuma imagem enviada.' });
@@ -96,14 +96,18 @@ const uploadEvidencia = asyncHandler(async (req, res) => {
   // O multer salva o arquivo fisicamente e disponibiliza os dados em req.file
   const caminhoRelativo = `/uploads/evidencias/${req.file.filename}`;
 
-  // Chama o model para salvar o caminho no banco de dados
-  const evidencia = await execucaoModel.salvarEvidencia(id, caminhoRelativo);
+  // Chama o model para atualizar a linha da resposta com o caminho da imagem
+  const atualizado = await execucaoModel.anexarEvidenciaNaResposta(id_resposta, caminhoRelativo);
 
-  return res.status(201).json({
+  if (!atualizado) {
+    return res.status(404).json({ success: false, error: 'Resposta não encontrada.' });
+  }
+
+  return res.status(200).json({
     success: true,
     data: {
-      mensagem: 'Evidência salva com sucesso!',
-      evidencia
+      mensagem: 'Imagem de evidência anexada com sucesso!',
+      imagem_evidencia: caminhoRelativo
     }
   });
 });
@@ -112,5 +116,5 @@ module.exports = {
   registrarExecucao,
   listar,
   buscarPorId,
-  uploadEvidencia // Não esqueça de exportar a nova função
+  uploadEvidenciaResposta // Exportando a função com o nome correto
 };

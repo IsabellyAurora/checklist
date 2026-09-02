@@ -9,11 +9,14 @@ export default function Relatorios() {
   const [totalPages, setTotalPages] = useState(1);
   const [detalhes, setDetalhes] = useState(null);
   
-  // NOVOS ESTADOS PARA OS FILTROS
+  // ESTADOS PARA OS FILTROS
   const [filtroId, setFiltroId] = useState('');
   const [filtroUsuario, setFiltroUsuario] = useState('');
   const [filtroData, setFiltroData] = useState('');
   const [filtroOs, setFiltroOs] = useState('');
+
+  // Estado para a imagem ampliada (Modal)
+  const [imagemAmpliada, setImagemAmpliada] = useState(null);
 
   const navigate = useNavigate();
 
@@ -26,7 +29,12 @@ export default function Relatorios() {
       const resposta = await fetchWithAuth(`/api/execucoes?page=${page}&limit=10`);
       if (resposta.ok) {
         const json = await resposta.json();
-        setExecucoes(json.data || []);
+        const listaBruta = json.data || [];
+        
+        // Ordena para garantir que os IDs mais altos (mais recentes) apareçam primeiro
+        const listaOrdenada = listaBruta.sort((a, b) => b.id_execucao - a.id_execucao);
+
+        setExecucoes(listaOrdenada);
         setTotalPages(json.totalPages || 1);
       }
     } catch (erro) {
@@ -69,22 +77,14 @@ export default function Relatorios() {
     window.print();
   };
 
-  // NOVO: Função que filtra a lista atual de execuções com base nos campos preenchidos
   const execucoesFiltradas = execucoes.filter((exec) => {
-    // Filtro por ID (ex: digita "5" e acha o ID 5)
     const matchId = filtroId ? String(exec.id_execucao).includes(filtroId) : true;
-
-    // Filtro por Nome do Usuário (case-insensitive)
     const matchUsuario = filtroUsuario 
       ? exec.usuario_nome?.toLowerCase().includes(filtroUsuario.toLowerCase()) 
       : true;
-
-    // Filtro por Data (compara a string ISO ou formato local)
     const matchData = filtroData 
       ? exec.data_inicio?.includes(filtroData) || formatarDataHora(exec.data_inicio).includes(filtroData)
       : true;
-
-    // Filtro por Ordem de Serviço (OS)
     const matchOs = filtroOs 
       ? exec.ordem_servico?.toLowerCase().includes(filtroOs.toLowerCase()) 
       : true;
@@ -101,7 +101,6 @@ export default function Relatorios() {
             <h2>Relatórios de Execução</h2>
             <p>Histórico de todos os checklists preenchidos.</p>
 
-            {/* NOVO: BARRA DE FILTROS */}
             <div className="filtros-container" style={{ 
               display: 'grid', 
               gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
@@ -179,7 +178,7 @@ export default function Relatorios() {
                       <tr key={exec.id_execucao}>
                         <td className="col-destaque">#{exec.id_execucao}</td>
                         <td>
-                          <strong>{exec.checklist_titulo}</strong><br/>
+                          <strong>{exec.checklist_titulo || exec.titulo}</strong><br/>
                           <small>{exec.setor}</small>
                           {exec.ordem_servico && <><br/><small style={{ color: '#d32f2f', fontWeight: 'bold' }}>OS: {exec.ordem_servico}</small></>}
                         </td>
@@ -263,18 +262,41 @@ export default function Relatorios() {
               {detalhes.respostas && detalhes.respostas.length > 0 ? (
                 <ul>
                   {detalhes.respostas.map((resp, index) => (
-                    <li key={resp.id_resposta || index} className="resposta-item">
+                    <li key={resp.id_resposta || index} className="resposta-item" style={{ marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid #e2e8f0' }}>
                       <p className="pergunta-texto">
-                        <strong>Pergunta {resp.id_item}:</strong> {resp.descricao || 'Descrição indisponível'}
+                        <strong>Pergunta {resp.ordem || resp.id_item}:</strong> {resp.descricao || 'Descrição indisponível'}
                       </p>
-                      <div className="resposta-dados">
+                      
+                      <div className="resposta-dados" style={{ marginTop: '0.5rem' }}>
                         <span className="badge-resposta">
                           Resposta: {resp.valor_resposta || 'Não preenchido'}
                         </span>
                         {resp.observacao && (
-                          <p className="obs-texto"><strong>Obs:</strong> {resp.observacao}</p>
+                          <p className="obs-texto" style={{ marginTop: '0.5rem' }}><strong>Obs:</strong> {resp.observacao}</p>
                         )}
                       </div>
+
+                      {/* Exibição da Imagem de Evidência */}
+                      {resp.imagem_evidencia && (
+                        <div style={{ marginTop: '1rem' }}>
+                          <p style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#475569', marginBottom: '0.3rem' }}>
+                            📸 Evidência Fotográfica:
+                          </p>
+                          <img 
+                            src={resp.imagem_evidencia} 
+                            alt="Evidência" 
+                            title="Clique para ampliar"
+                            onClick={() => setImagemAmpliada(resp.imagem_evidencia)}
+                            style={{ 
+                              width: '120px', height: '120px', objectFit: 'cover', 
+                              borderRadius: '6px', border: '1px solid #cbd5e1', 
+                              cursor: 'pointer', transition: 'transform 0.2s' 
+                            }}
+                            onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+                            onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+                          />
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -284,7 +306,7 @@ export default function Relatorios() {
             </div>
 
             <div style={{ marginTop: '2rem' }} className="no-print botoes-acao">
-              <button className="btn-voltar-home" style={{ width: '100광역시' }} onClick={() => setDetalhes(null)}>
+              <button className="btn-voltar-home" style={{ width: '100%' }} onClick={() => setDetalhes(null)}>
                 Voltar para a Lista
               </button>
             </div>
@@ -292,6 +314,38 @@ export default function Relatorios() {
         )}
 
       </div>
+
+      {/* MODAL PARA AMPLIAR IMAGEM */}
+      {imagemAmpliada && (
+        <div 
+          onClick={() => setImagemAmpliada(null)}
+          className="no-print"
+          style={{
+            position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+            backgroundColor: 'rgba(0, 0, 0, 0.8)', display: 'flex', justifyContent: 'center',
+            alignItems: 'center', zIndex: 3000, cursor: 'pointer', padding: '2rem'
+          }}
+        >
+          <div style={{ position: 'relative', maxWidth: '90%', maxHeight: '90%' }} onClick={(e) => e.stopPropagation()}>
+            <img 
+              src={imagemAmpliada} 
+              alt="Ampliada" 
+              style={{ maxWidth: '100%', maxHeight: '85vh', borderRadius: '8px', objectFit: 'contain', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', display: 'block', margin: '0 auto' }} 
+            />
+            <button 
+              onClick={() => setImagemAmpliada(null)}
+              style={{
+                position: 'absolute', top: '-15px', right: '-15px', backgroundColor: '#ef4444',
+                color: 'white', border: 'none', borderRadius: '50%', width: '35px', height: '35px',
+                fontSize: '1.2rem', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center',
+                boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

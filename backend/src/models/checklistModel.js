@@ -57,6 +57,7 @@ const listarChecklists = async (setorFiltro, page = 1, limit = 10) => {
   
   return { totalItems, totalPages: Math.ceil(totalItems / limit), currentPage: page, data: rows };
 };
+
 const buscarChecklistPorId = async (idChecklist) => {
   // Busca os dados principais do checklist
   const resChecklist = await pool.query(
@@ -72,9 +73,21 @@ const buscarChecklistPorId = async (idChecklist) => {
     [idChecklist]
   );
 
+  // Mapeia o array para criar a propriedade 'imagem_url' que o front pediu
+  const itensFormatados = resItens.rows.map(item => {
+    // Separa a propriedade imagem_referencia das demais
+    const { imagem_referencia, ...restoDoItem } = item;
+    
+    return {
+      ...restoDoItem,
+      // Cria a nova chave 'imagem_url'
+      imagem_url: imagem_referencia ? imagem_referencia : null 
+    };
+  });
+
   return {
     ...resChecklist.rows[0],
-    itens: resItens.rows,
+    itens: itensFormatados,
   };
 };
 
@@ -94,10 +107,19 @@ const inativarChecklist = async (idChecklist) => {
   return rows[0];
 };
 
+const anexarReferenciaNoItem = async (idItem, caminhoImagem) => {
+  const { rowCount } = await pool.query(
+    `UPDATE item SET imagem_referencia = $1 WHERE id_item = $2`,
+    [caminhoImagem, idItem]
+  );
+  return rowCount > 0;
+};
+
 module.exports = {
   criarChecklistComItens,
   listarChecklists, // Nome atualizado (antes era listarChecklistsAtivos)
   buscarChecklistPorId,
   atualizarTituloChecklist,
   inativarChecklist,
+  anexarReferenciaNoItem,
 };

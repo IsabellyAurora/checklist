@@ -42,7 +42,6 @@ const listarExecucoes = async (page = 1, limit = 10, filtros = {}) => {
   const values = [];
   const whereConditions = [];
 
-  // 1. Lógica dinâmica para adicionar filtros na query SQL
   if (filtros.ordem_servico) {
     values.push(`%${filtros.ordem_servico}%`);
     whereConditions.push(`e.ordem_servico ILIKE $${values.length}`);
@@ -55,7 +54,6 @@ const listarExecucoes = async (page = 1, limit = 10, filtros = {}) => {
 
   const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
-  // 2. Aplicar os filtros na contagem total para paginação
   const countQuery = `
     SELECT COUNT(*) FROM execucao e 
     JOIN checklist c ON e.id_checklist = c.id_checklist 
@@ -64,7 +62,6 @@ const listarExecucoes = async (page = 1, limit = 10, filtros = {}) => {
   const countResult = await pool.query(countQuery, values);
   const totalItems = parseInt(countResult.rows[0].count, 10);
 
-  // 3. Consulta principal com filtros e limites
   const query = `
     SELECT 
       e.id_execucao, e.status, e.data_inicio, e.data_conclusao, e.ordem_servico,
@@ -101,8 +98,8 @@ const buscarExecucaoPorId = async (idExecucao) => {
 
   const resRespostas = await pool.query(`
     SELECT 
-      r.id_resposta, r.valor_resposta, r.observacao,
-      i.id_item, i.ordem, i.descricao, i.tipo
+      r.id_resposta, r.valor_resposta, r.observacao, r.imagem_evidencia,
+      i.id_item, i.ordem, i.descricao, i.tipo, i.imagem_referencia
     FROM resposta r
     JOIN item i ON r.id_item = i.id_item
     WHERE r.id_execucao = $1
@@ -112,8 +109,17 @@ const buscarExecucaoPorId = async (idExecucao) => {
   return { ...execucao, respostas: resRespostas.rows };
 };
 
+const anexarEvidenciaNaResposta = async (idResposta, caminhoImagem) => {
+  const { rowCount } = await pool.query(
+    `UPDATE resposta SET imagem_evidencia = $1 WHERE id_resposta = $2`,
+    [caminhoImagem, idResposta]
+  );
+  return rowCount > 0;
+};
+
 module.exports = {
   salvarExecucaoCompleta,
   listarExecucoes,
   buscarExecucaoPorId,
+  anexarEvidenciaNaResposta
 };

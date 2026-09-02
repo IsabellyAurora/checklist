@@ -16,9 +16,10 @@ export default function PreencherChecklist() {
   const [alerta, setAlerta] = useState({ visivel: false, tipo: '', titulo: '', mensagem: '' });
   
   const [dataInicio, setDataInicio] = useState(null);
-  
-  // NOVO: Estado para armazenar o número da OS
   const [ordemServico, setOrdemServico] = useState('');
+
+  // Estado para controlar a imagem ampliada no modal
+  const [imagemAmpliada, setImagemAmpliada] = useState(null);
 
   const navigate = useNavigate();
 
@@ -47,8 +48,12 @@ export default function PreencherChecklist() {
       const response = await fetchWithAuth(`/api/checklists?setor=${setor}`);
       if (response.ok) {
         const json = await response.json();
-        const ativos = (json.data || []).filter(c => c.ativo);
-        setChecklistsDisponiveis(ativos);
+        
+        // Log para espiar o que o backend mandou
+        console.log("CHECKLISTS QUE VIERAM DO BACKEND:", json.data);
+        
+        // Mantido sem filtro de 'ativo' temporariamente para validação
+        setChecklistsDisponiveis(json.data || []);
       }
     } catch (erro) {
       console.error('Erro ao buscar checklists do setor:', erro);
@@ -63,8 +68,16 @@ export default function PreencherChecklist() {
       setIdChecklistSelecionado('');
       setChecklistAtual(null);
       setDataInicio(null);
-      setOrdemServico(''); // Limpa a OS se apagar a busca
+      setOrdemServico('');
     }
+  };
+
+  // Função para pegar a hora local exata sem somar as 3h do UTC
+  const obterDataHoraLocal = () => {
+    const data = new Date();
+    const deslocamento = data.getTimezoneOffset() * 60000;
+    const dataLocal = new Date(data.getTime() - deslocamento);
+    return dataLocal.toISOString().slice(0, -1);
   };
 
   const handleSelecionarDoDropdown = async (checklistEscolhido) => {
@@ -72,7 +85,7 @@ export default function PreencherChecklist() {
     setDropdownAberto(false); 
     setIdChecklistSelecionado(checklistEscolhido.id_checklist);
     setRespostas({}); 
-    setOrdemServico(''); // Limpa a OS ao iniciar um novo checklist
+    setOrdemServico('');
     
     try {
       const response = await fetchWithAuth(`/api/checklists/${checklistEscolhido.id_checklist}`);
@@ -81,12 +94,18 @@ export default function PreencherChecklist() {
         const dados = json.data || json;
         setChecklistAtual(dados);
         
-        setDataInicio(new Date().toISOString());
+        // Salva a hora local real no início do preenchimento
+        setDataInicio(obterDataHoraLocal());
         
         const respostasIniciais = {};
         if (dados.itens) {
           dados.itens.forEach(item => {
-            respostasIniciais[item.id_item] = { valor_resposta: '', observacao: '' };
+            respostasIniciais[item.id_item] = { 
+              valor_resposta: '', 
+              observacao: '', 
+              foto: null, 
+              fotoPreview: null 
+            };
           });
         }
         setRespostas(respostasIniciais);
@@ -107,19 +126,35 @@ export default function PreencherChecklist() {
     }));
   };
 
+  // Função para capturar a foto (Câmera ou Galeria)
+  const handleFotoItemChange = (idItem, e) => {
+    const arquivo = e.target.files[0];
+    if (arquivo) {
+      setRespostas(prev => ({
+        ...prev,
+        [idItem]: {
+          ...prev[idItem],
+          foto: arquivo,
+          fotoPreview: URL.createObjectURL(arquivo)
+        }
+      }));
+    }
+  };
+
   const handleEnviarChecklist = async (e) => {
     e.preventDefault();
     
-    const dataConclusao = new Date().toISOString();
+    // Usa a função para salvar a hora local real da conclusão
+    const dataConclusao = obterDataHoraLocal();
 
-    const payload = {
+    const payloadPrincipal = {
       id_checklist: Number(idChecklistSelecionado),
       id_usuario: usuario.id_usuario,
       data_inicio: dataInicio,         
       data_conclusao: dataConclusao,
       dataInicio: dataInicio,
       dataConclusao: dataConclusao,
-      ordem_servico: ordemServico, // NOVO: Enviando a OS para o backend
+      ordem_servico: ordemServico,
       respostas: Object.entries(respostas).map(([id_item, dados]) => ({
         id_item: Number(id_item),
         valor_resposta: dados.valor_resposta,
@@ -130,11 +165,31 @@ export default function PreencherChecklist() {
     try {
       const response = await fetchWithAuth('/api/execucoes', {
         method: 'POST',
-        body: JSON.stringify(payload)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payloadPrincipal)
       });
 
       if (response.ok) {
-        mostrarAlerta('sucesso', 'Checklist Concluído!', 'Suas respostas foram salvas com sucesso.');
+        const resultadoJson = await response.json();
+        const respostasSalvas = resultadoJson.data?.execucao?.respostas || resultadoJson.data?.respostas || [];
+
+        for (const [id_item, dados] of Object.entries(respostas)) {
+          if (dados.foto) {
+            const respostaCorrespondente = respostasSalvas.find(r => r.id_item === Number(id_item));
+            
+            if (respostaCorrespondente && respostaCorrespondente.id_resposta) {
+              const formDataFoto = new FormData();
+              formDataFoto.append('imagem', dados.foto);
+
+              await fetchWithAuth(`/api/respostas/${respostaCorrespondente.id_resposta}/imagem`, {
+                method: 'POST',
+                body: formDataFoto
+              });
+            }
+          }
+        }
+
+        mostrarAlerta('sucesso', 'Checklist Concluído!', 'Suas respostas e evidências foram salvas com sucesso.');
       } else {
         mostrarAlerta('erro', 'Erro ao salvar', 'Ocorreu um erro ao enviar o checklist.');
       }
@@ -152,7 +207,7 @@ export default function PreencherChecklist() {
 
   return (
     <div className="preencher-container">
-      <div className="preencher-card">
+      <div className="preencher-card" style={{ maxWidth: '900px' }}>
         <h2>Preencher Checklist</h2>
         <p>Setor: <strong>{usuario?.setor}</strong></p>
 
@@ -197,7 +252,6 @@ export default function PreencherChecklist() {
           <form onSubmit={handleEnviarChecklist} className="formulario-perguntas">
             <h3 className="titulo-checklist-atual">{checklistAtual.titulo}</h3>
             
-            {/* NOVO: Campo de entrada para a Ordem de Serviço */}
             <div className="campo-os" style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
               <label htmlFor="input-os" style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.5rem', color: '#374151' }}>
                 Número da OS (Ordem de Serviço): <span className="asterisco">*</span>
@@ -215,60 +269,133 @@ export default function PreencherChecklist() {
 
             <div className="lista-perguntas">
               {checklistAtual.itens && checklistAtual.itens.length > 0 ? (
-                checklistAtual.itens.map((item) => (
-                  <div key={item.id_item} className="pergunta-card">
-                    <p className="pergunta-texto">
-                      <strong>{item.ordem}.</strong> {item.descricao} 
-                      {item.obrigatorio && <span className="asterisco"> *</span>}
-                    </p>
+                checklistAtual.itens.map((item) => {
+                  const urlReferencia = item.imagem_url || item.imagem_referencia;
 
-                    <div className="resposta-area">
-                      {item.tipo === 'booleano' && (
-                        <select
-                          required={item.obrigatorio}
-                          className="input-padrao"
-                          value={respostas[item.id_item]?.valor_resposta || ''}
-                          onChange={(e) => handleRespostaChange(item.id_item, 'valor_resposta', e.target.value)}
-                        >
-                          <option value="" disabled>Selecione...</option>
-                          <option value="Conforme">Conforme</option>
-                          <option value="Não Conforme">Não Conforme</option>
-                          <option value="Não se Aplica">Não se Aplica</option>
-                        </select>
+                  return (
+                    <div key={item.id_item} className="pergunta-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '1rem', backgroundColor: '#fff' }}>
+                      
+                      <p className="pergunta-texto">
+                        <strong>{item.ordem}.</strong> {item.descricao} 
+                        {item.obrigatorio && <span className="asterisco"> *</span>}
+                      </p>
+
+                      {urlReferencia && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <img 
+                            src={urlReferencia} 
+                            alt="Referência do Item" 
+                            title="Clique para ampliar"
+                            onClick={() => setImagemAmpliada(urlReferencia)}
+                            style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #cbd5e1', cursor: 'pointer' }}
+                          />
+                          <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Referência do Item</span>
+                        </div>
                       )}
 
-                      {item.tipo === 'texto' && (
+                      <div className="resposta-area" style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                        {item.tipo === 'booleano' && (
+                          <select
+                            required={item.obrigatorio}
+                            className="input-padrao"
+                            value={respostas[item.id_item]?.valor_resposta || ''}
+                            onChange={(e) => handleRespostaChange(item.id_item, 'valor_resposta', e.target.value)}
+                          >
+                            <option value="" disabled>Selecione...</option>
+                            <option value="Conforme">Conforme</option>
+                            <option value="Não Conforme">Não Conforme</option>
+                            <option value="Não se Aplica">Não se Aplica</option>
+                          </select>
+                        )}
+
+                        {item.tipo === 'texto' && (
+                          <input
+                            type="text"
+                            required={item.obrigatorio}
+                            className="input-padrao"
+                            placeholder="Digite sua resposta"
+                            value={respostas[item.id_item]?.valor_resposta || ''}
+                            onChange={(e) => handleRespostaChange(item.id_item, 'valor_resposta', e.target.value)}
+                          />
+                        )}
+
+                        {item.tipo === 'numero' && (
+                          <input
+                            type="number"
+                            required={item.obrigatorio}
+                            className="input-padrao"
+                            placeholder="Digite um valor"
+                            value={respostas[item.id_item]?.valor_resposta || ''}
+                            onChange={(e) => handleRespostaChange(item.id_item, 'valor_resposta', e.target.value)}
+                          />
+                        )}
+
                         <input
                           type="text"
-                          required={item.obrigatorio}
-                          className="input-padrao"
-                          placeholder="Digite sua resposta"
-                          value={respostas[item.id_item]?.valor_resposta || ''}
-                          onChange={(e) => handleRespostaChange(item.id_item, 'valor_resposta', e.target.value)}
+                          className="input-observacao"
+                          placeholder="Observação (Opcional)"
+                          value={respostas[item.id_item]?.observacao || ''}
+                          onChange={(e) => handleRespostaChange(item.id_item, 'observacao', e.target.value)}
                         />
-                      )}
 
-                      {item.tipo === 'numero' && (
-                        <input
-                          type="number"
-                          required={item.obrigatorio}
-                          className="input-padrao"
-                          placeholder="Digite um valor"
-                          value={respostas[item.id_item]?.valor_resposta || ''}
-                          onChange={(e) => handleRespostaChange(item.id_item, 'valor_resposta', e.target.value)}
-                        />
-                      )}
+                        <div className="evidencia-container" style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginTop: '0.3rem', borderTop: '1px dashed #e2e8f0', paddingTop: '0.8rem' }}>
+                          
+                          <label htmlFor={`camera-input-${item.id_item}`} style={{ cursor: 'pointer', backgroundColor: '#0284c7', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '4px', fontSize: '0.85rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            📸 Tirar Foto
+                          </label>
+                          <input
+                            id={`camera-input-${item.id_item}`}
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            onChange={(e) => handleFotoItemChange(item.id_item, e)}
+                            style={{ display: 'none' }}
+                          />
 
-                      <input
-                        type="text"
-                        className="input-observacao"
-                        placeholder="Observação (Opcional)"
-                        value={respostas[item.id_item]?.observacao || ''}
-                        onChange={(e) => handleRespostaChange(item.id_item, 'observacao', e.target.value)}
-                      />
+                          <label htmlFor={`galeria-input-${item.id_item}`} style={{ cursor: 'pointer', backgroundColor: '#64748b', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '4px', fontSize: '0.85rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            📁 Escolher da Galeria
+                          </label>
+                          <input
+                            id={`galeria-input-${item.id_item}`}
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleFotoItemChange(item.id_item, e)}
+                            style={{ display: 'none' }}
+                          />
+
+                          {respostas[item.id_item]?.fotoPreview && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#f1f5f9', padding: '0.3rem 0.6rem', borderRadius: '4px' }}>
+                              <img 
+                                src={respostas[item.id_item].fotoPreview} 
+                                alt="Evidência" 
+                                title="Clique para ampliar"
+                                onClick={() => setImagemAmpliada(respostas[item.id_item].fotoPreview)}
+                                style={{ width: '35px', height: '35px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '1px solid #cbd5e1' }}
+                              />
+                              <span style={{ fontSize: '0.8rem', color: '#334155', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {respostas[item.id_item].foto.name}
+                              </span>
+                              <button 
+                                type="button" 
+                                onClick={() => {
+                                  setRespostas(prev => ({
+                                    ...prev,
+                                    [item.id_item]: { ...prev[item.id_item], foto: null, fotoPreview: null }
+                                  }));
+                                }}
+                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
+                                title="Remover foto"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          )}
+
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <p>Este checklist não possui perguntas cadastradas.</p>
               )}
@@ -291,6 +418,36 @@ export default function PreencherChecklist() {
           </button>
         )}
       </div>
+
+      {imagemAmpliada && (
+        <div 
+          onClick={() => setImagemAmpliada(null)}
+          style={{
+            position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+            backgroundColor: 'rgba(0, 0, 0, 0.8)', display: 'flex', justifyContent: 'center',
+            alignItems: 'center', zIndex: 2000, cursor: 'pointer', padding: '2rem'
+          }}
+        >
+          <div style={{ position: 'relative', maxWidth: '90%', maxHeight: '90%' }} onClick={(e) => e.stopPropagation()}>
+            <img 
+              src={imagemAmpliada} 
+              alt="Ampliada" 
+              style={{ maxWidth: '100%', maxHeight: '85vh', borderRadius: '8px', objectFit: 'contain', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', display: 'block', margin: '0 auto' }} 
+            />
+            <button 
+              onClick={() => setImagemAmpliada(null)}
+              style={{
+                position: 'absolute', top: '-15px', right: '-15px', backgroundColor: '#ef4444',
+                color: 'white', border: 'none', borderRadius: '50%', width: '35px', height: '35px',
+                fontSize: '1.2rem', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center',
+                boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {alerta.visivel && (
         <div className="modal-overlay">

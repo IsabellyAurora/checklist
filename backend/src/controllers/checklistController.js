@@ -1,5 +1,5 @@
 const checklistModel = require('../models/checklistModel');
-const asyncHandler = require('../middlewares/asyncHandler');
+const asyncHandler = require('../middlewares/asyncHandler'); // Declarado apenas uma vez aqui no topo
 
 const criarChecklist = asyncHandler(async (req, res) => {
   const { titulo, setor, itens } = req.body;
@@ -107,10 +107,39 @@ const excluirChecklist = asyncHandler(async (req, res) => {
   });
 });
 
+// Removida a segunda declaração do asyncHandler que causava o erro.
+// Alterado itemModel para checklistModel
+const uploadReferenciaItem = asyncHandler(async (req, res) => {
+  const { id_item } = req.params;
+
+  if (!req.file) {
+    return res.status(400).json({ success: false, error: 'Nenhuma imagem enviada.' });
+  }
+
+  // O multer salva na pasta correta graças ao uploadReferencia
+  const caminhoRelativo = `/uploads/referencias/${req.file.filename}`;
+  
+  // Chamando a função a partir do checklistModel
+  const atualizado = await checklistModel.anexarReferenciaNoItem(id_item, caminhoRelativo);
+
+  if (!atualizado) {
+    return res.status(404).json({ success: false, error: 'Item/Pergunta não encontrado.' });
+  }
+
+  return res.status(200).json({
+    success: true,
+    data: {
+      mensagem: 'Imagem de referência anexada com sucesso!',
+      imagem_referencia: caminhoRelativo
+    }
+  });
+});
+
 module.exports = {
   criarChecklist,
   listarChecklists,
   buscarChecklist,
   atualizarChecklist,
   excluirChecklist,
+  uploadReferenciaItem
 };
