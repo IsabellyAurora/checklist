@@ -171,24 +171,26 @@ export default function GerenciarChecklists() {
     setNovosItens(itensReordenados);
   };
 
-  // Salvar atualização completa (PUT) e envio opcional de novas fotos de referência
   const handleSalvarEdicaoCompleta = async () => {
     try {
-      const usuarioSalvo = JSON.parse(localStorage.getItem('usuario') || '{}');
+      const usuarioString = localStorage.getItem('usuario') || '{}';
+      const usuarioSalvo = JSON.parse(usuarioString);
       const setorUsuario = usuarioSalvo.setor || localStorage.getItem('setor') || 'admin';
 
       // 1. Payload de atualização do checklist (PUT /checklists/{id})
-      const payloadCompleto = {
+     const payloadCompleto = {
         titulo: novoTitulo,
         setor: novoSetor,
         itens: novosItens.map((item, idx) => ({
           ordem: idx + 1,
           descricao: item.descricao,
           tipo: item.tipo || 'booleano',
-          obrigatorio: Boolean(item.obrigatorio)
+          obrigatorio: Boolean(item.obrigatorio),
+          imagem_url: item.imagem_url // <-- ESSA É A LINHA MÁGICA QUE FALTAVA
         }))
       };
 
+      // Edição dos textos do checklist
       const resposta = await fetchWithAuth(`/api/checklists/${checklist.id_checklist}`, {
         method: 'PUT',
         headers: {
@@ -204,27 +206,37 @@ export default function GerenciarChecklists() {
         // Versionamento Inteligente: captura o novo ID se o backend clonou o registro
         const novoIdReal = json.data?.id_checklist || checklist.id_checklist;
         
-        // 2. Se houver novas fotos anexadas em algum item, fazemos o upload pontual
-        // (Nota: Se o backend gerar um novo ID com novos itens, buscamos os novos itens para sincronizar se necessário)
+        // 2. Envio de novas fotos para os itens recém criados
         const itensRetornados = json.data?.itens || [];
 
         for (let i = 0; i < novosItens.length; i++) {
           const itemAtual = novosItens[i];
+          
           if (itemAtual.novaFotoBase64 && itemAtual.novaFotoArquivo) {
-            // Tenta encontrar o ID do item correspondente no registro salvo
+            // Tenta encontrar o ID do item recém-gerado no banco, baseado na ordem
             const itemSalvoMatch = itensRetornados.find(r => r.ordem === itemAtual.ordem);
-            const idItemAlvo = itemSalvoMatch?.id_item || itemAtual.id_item;
+            const idItemAlvo = itemSalvoMatch?.id_item;
 
             if (idItemAlvo) {
               const formDataFoto = new FormData();
               const arquivoBlob = base64ToBlob(itemAtual.novaFotoBase64);
               formDataFoto.append('imagem', arquivoBlob, itemAtual.novaFotoArquivo.name || `ref_${idItemAlvo}.jpg`);
 
-              // Rota padrão para atualizar a imagem de referência do item/pergunta (ajuste se a sua rota diferir)
-              await fetchWithAuth(`/api/itens/${idItemAlvo}/imagem`, {
-                method: 'POST',
-                body: formDataFoto
-              }).catch(err => console.error("Erro ao enviar imagem do item:", err));
+              // AGORA SIM: Usando o seu fetchWithAuth que já sabe lidar com FormData e accessToken!
+              try {
+                const resUpload = await fetchWithAuth(`/api/checklists/itens/${idItemAlvo}/referencia`, {
+                  method: 'POST',
+                  body: formDataFoto
+                });
+
+                if (!resUpload.ok) {
+                  console.error("Falha ao salvar a imagem do item:", idItemAlvo, await resUpload.text());
+                } else {
+                  console.log(`Foto do item ${idItemAlvo} salva com sucesso!`);
+                }
+              } catch (errFoto) {
+                console.error("Erro na requisição da imagem:", errFoto);
+              }
             }
           }
         }
@@ -233,6 +245,7 @@ export default function GerenciarChecklists() {
         setEditando(false);
         carregarLista();
 
+        // Atualiza a tela com o ID correto (novo ou atual)
         if (novoIdReal !== checklist.id_checklist) {
           buscarChecklistPorId(novoIdReal);
         } else {

@@ -114,27 +114,30 @@ const editarChecklistComVersionamento = async (idChecklist, titulo, setor, itens
       await client.query(
         `INSERT INTO log_auditoria (id_usuario, acao, tabela_afetada, id_registro, dados_antigos, dados_novos) 
          VALUES ($1, 'VERSIONAMENTO', 'checklist', $2, $3, $4)`,
-        [
-          idUsuario, 
-          idFinal, 
-          JSON.stringify(dadosAntigos), 
-          JSON.stringify(dadosNovos)
-        ]
+        [idUsuario, idFinal, JSON.stringify(dadosAntigos), JSON.stringify(dadosNovos)]
       );
     } else {
       await client.query('UPDATE checklist SET titulo = $1, setor = $2 WHERE id_checklist = $3', [titulo, setor, idChecklist]);
       await client.query('DELETE FROM item WHERE id_checklist = $1', [idChecklist]);
     }
 
+    const novosItensCriados = [];
+
     for (const item of itens) {
-      await client.query(
-        'INSERT INTO item (id_checklist, ordem, descricao, tipo, obrigatorio) VALUES ($1, $2, $3, $4, $5)',
-        [idFinal, item.ordem, item.descricao, item.tipo, item.obrigatorio !== undefined ? item.obrigatorio : true]
+      // Captura a imagem se o front enviar (imagem_url ou imagem_referencia)
+      const imagemUrl = item.imagem_url || item.imagem_referencia || null;
+
+      const resItem = await client.query(
+        'INSERT INTO item (id_checklist, ordem, descricao, tipo, obrigatorio, imagem_referencia) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+        [idFinal, item.ordem, item.descricao, item.tipo, item.obrigatorio !== undefined ? item.obrigatorio : true, imagemUrl]
       );
+      novosItensCriados.push(resItem.rows[0]);
     }
 
     await client.query('COMMIT'); 
-    return idFinal;
+    
+    // Agora retornamos o ID final E a lista de itens com os novos IDs gerados
+    return { id_checklist: idFinal, itens: novosItensCriados };
 
   } catch (error) {
     await client.query('ROLLBACK'); 
@@ -143,7 +146,6 @@ const editarChecklistComVersionamento = async (idChecklist, titulo, setor, itens
     client.release();
   }
 };
-
 const inativarChecklist = async (idChecklist) => {
   const { rows } = await pool.query(
     'UPDATE checklist SET ativo = false WHERE id_checklist = $1 RETURNING *',

@@ -61,7 +61,6 @@ const atualizarChecklist = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { titulo, setor, itens } = req.body;
   
-  // Extrai o ID do usuário do middleware de autenticação (fallback para 1 se não estiver configurado)
   const idUsuario = req.usuario ? req.usuario.id_usuario : 1; 
 
   if (!titulo || !setor || !itens || !Array.isArray(itens) || itens.length === 0) {
@@ -71,17 +70,18 @@ const atualizarChecklist = asyncHandler(async (req, res) => {
     });
   }
 
-  const idFinal = await checklistModel.editarChecklistComVersionamento(id, titulo, setor, itens, idUsuario);
+  // Recebe o objeto completo retornado pelo model
+  const resultadoEdicao = await checklistModel.editarChecklistComVersionamento(id, titulo, setor, itens, idUsuario);
 
   return res.status(200).json({
     success: true,
     data: {
       mensagem: 'Checklist atualizado com sucesso!',
-      id_checklist: idFinal,
+      id_checklist: resultadoEdicao.id_checklist,
+      itens: resultadoEdicao.itens // Isso é vital para o front saber onde anexar a nova foto
     },
   });
 });
-
 const excluirChecklist = asyncHandler(async (req, res) => {
   const { id } = req.params;
   
