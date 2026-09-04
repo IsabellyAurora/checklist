@@ -2,46 +2,21 @@ const execucaoModel = require('../models/execucaoModel');
 const asyncHandler = require('../middlewares/asyncHandler');
 
 const registrarExecucao = asyncHandler(async (req, res) => {
-  const { id_checklist, id_usuario, respostas, data_inicio, data_conclusao, ordem_servico } = req.body;
+  const { id_checklist, respostas } = req.body;
+  const id_usuario = req.usuario.id_usuario;
 
-  if (!id_checklist || !id_usuario || !respostas || !Array.isArray(respostas) || respostas.length === 0) {
-    return res.status(400).json({
-      success: false,
-      error: 'Os campos id_checklist, id_usuario e um array de respostas são obrigatórios.',
-    });
-  }
-
-  if (!data_inicio || !data_conclusao) {
-    return res.status(400).json({
-      success: false,
-      error: 'As datas de início (data_inicio) e conclusão (data_conclusao) são obrigatórias.',
-    });
-  }
-
-  for (const resp of respostas) {
-    if (!resp.id_item || resp.valor_resposta === undefined) {
-      return res.status(400).json({
-        success: false,
-        error: 'Cada resposta deve conter id_item e valor_resposta.',
-      });
-    }
-  }
-
-  const resultado = await execucaoModel.salvarExecucaoCompleta(
-    id_checklist, 
-    id_usuario, 
-    respostas, 
-    data_inicio, 
-    data_conclusao,
-    ordem_servico || null
+  // Lógica inteligente: Verifica se alguma resposta booleana foi "false" ou "Não"
+  const temNC = respostas.some(r => 
+    r.tipo === 'booleano' && (r.valor_texto === 'false' || r.valor_texto === 'Não' || r.valor_texto === '0')
   );
+  
+  const statusNC = temNC ? 'PENDENTE' : 'SEM_NC';
 
+  const id_execucao = await execucaoModel.salvarExecucao(id_checklist, id_usuario, respostas, statusNC);
+  
   return res.status(201).json({
     success: true,
-    data: {
-      mensagem: 'Checklist respondido e salvo com sucesso!',
-      execucao: resultado,
-    },
+    data: { id_execucao, status_nc: statusNC, mensagem: 'Execução salva com sucesso!' }
   });
 });
 
@@ -112,9 +87,34 @@ const uploadEvidenciaResposta = asyncHandler(async (req, res) => {
   });
 });
 
+const listarPendencias = asyncHandler(async (req, res) => {
+  const pendencias = await execucaoModel.listarNCPendentes();
+  return res.status(200).json({ success: true, data: pendencias });
+});
+
+const resolverPendenciaNC = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { observacao } = req.body;
+  const idAdmin = req.usuario.id_usuario; // Extraído do token JWT
+
+  if (!observacao) {
+    return res.status(400).json({ success: false, error: 'A observação de resolução é obrigatória.' });
+  }
+
+  const resolvido = await execucaoModel.resolverNC(id, idAdmin, observacao);
+  
+  if (!resolvido) {
+    return res.status(404).json({ success: false, error: 'Execução não encontrada ou já resolvida.' });
+  }
+
+  return res.status(200).json({ success: true, data: { mensagem: 'Não Conformidade resolvida com sucesso.' } });
+});
+
 module.exports = {
   registrarExecucao,
   listar,
   buscarPorId,
-  uploadEvidenciaResposta // Exportando a função com o nome correto
+  uploadEvidenciaResposta,
+  listarPendencias,
+  resolverPendenciaNC, // Exportando a função com o nome correto
 };

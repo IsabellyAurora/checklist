@@ -1,34 +1,27 @@
 const pool = require('../config/db');
 
-const salvarExecucaoCompleta = async (idChecklist, idUsuario, respostas, dataInicio, dataConclusao, ordemServico) => {
+const salvarExecucao = async (idChecklist, idUsuario, respostas, status_nc = 'SEM_NC') => {
   const client = await pool.connect();
-
   try {
     await client.query('BEGIN');
 
     const resExecucao = await client.query(
-      `INSERT INTO execucao (id_checklist, id_usuario, status, data_inicio, data_conclusao, ordem_servico) 
-       VALUES ($1, $2, 'CONCLUIDO', $3::timestamp, $4::timestamp, $5) 
-       RETURNING *`,
-      [idChecklist, idUsuario, dataInicio, dataConclusao, ordemServico]
+      `INSERT INTO execucao (id_checklist, id_usuario, status_nc) 
+       VALUES ($1, $2, $3) RETURNING id_execucao`,
+      [idChecklist, idUsuario, status_nc]
     );
-    const execucao = resExecucao.rows[0];
+    const idExecucao = resExecucao.rows[0].id_execucao;
 
-    const respostasSalvas = [];
-
+    // ... (o loop de inserção das respostas no banco continua exatamente igual) ...
     for (const resp of respostas) {
-      const resResposta = await client.query(
-        `INSERT INTO resposta (id_execucao, id_item, valor_resposta, observacao) 
-         VALUES ($1, $2, $3, $4) 
-         RETURNING *`,
-        [execucao.id_execucao, resp.id_item, resp.valor_resposta, resp.observacao || null]
+      await client.query(
+        'INSERT INTO resposta (id_execucao, id_item, valor_texto, id_opcao) VALUES ($1, $2, $3, $4)',
+        [idExecucao, resp.id_item, resp.valor_texto, resp.id_opcao || null]
       );
-      respostasSalvas.push(resResposta.rows[0]);
     }
 
     await client.query('COMMIT');
-
-    return { ...execucao, respostas: respostasSalvas };
+    return idExecucao;
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -117,9 +110,38 @@ const anexarEvidenciaNaResposta = async (idResposta, caminhoImagem) => {
   return rowCount > 0;
 };
 
+const listarNCPendentes = async () => {
+  const query = `
+    SELECT e.id_execucao, e.data_execucao, c.titulo AS checklist_titulo, u.nome AS operador
+    FROM execucao e
+    JOIN checklist c ON e.id_checklist = c.id_checklist
+    JOIN usuario u ON e.id_usuario = u.id_usuario
+    WHERE e.status_nc = 'PENDENTE'
+    ORDER BY e.data_execucao DESC
+  `;
+  const { rows } = await pool.query(query);
+  return rows;
+};
+
+const resolverNC = async (idExecucao, idAdmin, observacao) => {
+  const query = `
+    UPDATE execucao 
+    SET status_nc = 'RESOLVIDO', 
+        id_admin_resolucao = $1, 
+        data_resolucao = NOW(), 
+        observacao_resolucao = $2
+    WHERE id_execucao = $3 AND status_nc = 'PENDENTE'
+    RETURNING id_execucao
+  `;
+  const { rowCount } = await pool.query(query, [idAdmin, observacao, idExecucao]);
+  return rowCount > 0;
+};
+
 module.exports = {
   salvarExecucaoCompleta,
   listarExecucoes,
   buscarExecucaoPorId,
-  anexarEvidenciaNaResposta
+  anexarEvidenciaNaResposta,
+  resolverNC,
+  listarNCPendentes,
 };

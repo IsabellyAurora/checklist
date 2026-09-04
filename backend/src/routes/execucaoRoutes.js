@@ -143,4 +143,100 @@ router.post(
   execucaoController.uploadEvidenciaResposta
 );
 
+// Certifique-se de que os middlewares e o controller estejam importados no topo do arquivo
+// const { verificarToken, checkAdmin } = require('../middlewares/authMiddleware');
+// const execucaoController = require('../controllers/execucaoController');
+
+/**
+ * @swagger
+ * /execucoes/pendencias/ncs:
+ *   get:
+ *     summary: Lista todas as execuções de checklists com Não Conformidades (NC) pendentes
+ *     description: Retorna uma lista de formulários preenchidos que possuem itens marcados negativamente e aguardam resolução do administrador.
+ *     tags: [Execuções]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: header
+ *         name: x-setor-usuario
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Setor do usuário logado (deve ser admin)
+ *     responses:
+ *       200:
+ *         description: Lista de pendências retornada com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id_execucao:
+ *                         type: integer
+ *                       data_execucao:
+ *                         type: string
+ *                         format: date-time
+ *                       checklist_titulo:
+ *                         type: string
+ *                       operador:
+ *                         type: string
+ *       401:
+ *         description: Não autorizado. Token ausente ou inválido.
+ *       403:
+ *         description: Acesso negado. Requer privilégios de administrador.
+ */
+router.get('/execucoes/pendencias/ncs', verificarToken, checkAdmin, execucaoController.listarPendencias);
+
+/**
+ * @swagger
+ * /execucoes/{id}/resolver-nc:
+ *   put:
+ *     summary: Resolve a Não Conformidade de uma execução
+ *     description: Permite que um administrador dê baixa em uma Não Conformidade pendente, adicionando uma observação sobre a tratativa realizada.
+ *     tags: [Execuções]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: ID da Execução que possui a NC pendente.
+ *         schema:
+ *           type: integer
+ *       - in: header
+ *         name: x-setor-usuario
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Setor do usuário logado (deve ser admin)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - observacao
+ *             properties:
+ *               observacao:
+ *                 type: string
+ *                 description: Descrição da tratativa realizada para resolver o problema.
+ *                 example: "Válvula de pressão substituída conforme OS #1405"
+ *     responses:
+ *       200:
+ *         description: Não Conformidade resolvida com sucesso.
+ *       400:
+ *         description: Requisição inválida (observação não fornecida).
+ *       404:
+ *         description: Execução não encontrada ou a Não Conformidade já foi resolvida.
+ */
+router.put('/execucoes/:id/resolver-nc', verificarToken, checkAdmin, execucaoController.resolverPendenciaNC);
+
 module.exports = router;
