@@ -5,7 +5,7 @@ const registrarExecucao = asyncHandler(async (req, res) => {
   const { id_checklist, respostas } = req.body;
   const id_usuario = req.usuario.id_usuario;
 
-  // Lógica inteligente: Verifica se alguma resposta booleana foi "false" ou "Não"
+  // Lógica inteligente: Verifica se alguma resposta booleana foi "false", "Não" ou "0"
   const temNC = respostas.some(r => 
     r.tipo === 'booleano' && (r.valor_texto === 'false' || r.valor_texto === 'Não' || r.valor_texto === '0')
   );
@@ -16,7 +16,12 @@ const registrarExecucao = asyncHandler(async (req, res) => {
   
   return res.status(201).json({
     success: true,
-    data: { id_execucao, status_nc: statusNC, mensagem: 'Execução salva com sucesso!' }
+    data: { 
+      id_execucao, 
+      possui_nc: temNC, // A flag exata que o frontend pediu (true/false)
+      status_nc: statusNC, 
+      mensagem: 'Execução salva com sucesso!' 
+    }
   });
 });
 

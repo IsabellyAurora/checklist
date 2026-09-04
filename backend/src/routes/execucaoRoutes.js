@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const execucaoController = require('../controllers/execucaoController');
-const verificarToken = require('../middlewares/authMiddleware');
+// Importando corretamente os dois middlewares no topo
+const { verificarToken, checkAdmin } = require('../middlewares/authMiddleware');
 const { uploadMemoria, otimizarImagem } = require('../middlewares/uploadMiddleware');
 
 /**
@@ -45,6 +46,26 @@ const { uploadMemoria, otimizarImagem } = require('../middlewares/uploadMiddlewa
  *     responses:
  *       201:
  *         description: Respostas salvas com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id_execucao:
+ *                       type: integer
+ *                     possui_nc:
+ *                       type: boolean
+ *                       description: Flag booleana indicando se houve alguma Não Conformidade
+ *                     status_nc:
+ *                       type: string
+ *                       description: Status interno da NC (PENDENTE, SEM_NC)
+ *                     mensagem:
+ *                       type: string
  */
 router.post('/execucoes', verificarToken(), execucaoController.registrarExecucao);
 
@@ -143,10 +164,6 @@ router.post(
   execucaoController.uploadEvidenciaResposta
 );
 
-// Certifique-se de que os middlewares e o controller estejam importados no topo do arquivo
-// const { verificarToken, checkAdmin } = require('../middlewares/authMiddleware');
-// const execucaoController = require('../controllers/execucaoController');
-
 /**
  * @swagger
  * /execucoes/pendencias/ncs:
@@ -192,7 +209,7 @@ router.post(
  *       403:
  *         description: Acesso negado. Requer privilégios de administrador.
  */
-router.get('/execucoes/pendencias/ncs', verificarToken, checkAdmin, execucaoController.listarPendencias);
+router.get('/execucoes/pendencias/ncs', verificarToken(), checkAdmin, execucaoController.listarPendencias);
 
 /**
  * @swagger
@@ -237,6 +254,6 @@ router.get('/execucoes/pendencias/ncs', verificarToken, checkAdmin, execucaoCont
  *       404:
  *         description: Execução não encontrada ou a Não Conformidade já foi resolvida.
  */
-router.put('/execucoes/:id/resolver-nc', verificarToken, checkAdmin, execucaoController.resolverPendenciaNC);
+router.put('/execucoes/:id/resolver-nc', verificarToken(), checkAdmin, execucaoController.resolverPendenciaNC);
 
 module.exports = router;
