@@ -79,6 +79,9 @@ export default function GerenciarChecklists() {
         setNovosItens(itensCompletos);
         setIdBusca(id);
         setEditando(false);
+
+        // Rolagem suave para o topo ao carregar os detalhes
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         mostrarAlerta('erro', 'Não encontrado', 'Checklist não encontrado.');
         setChecklist(null);
@@ -99,7 +102,7 @@ export default function GerenciarChecklists() {
     setNovosItens(itensAtualizados);
   };
 
-  // Compressão de imagem semelhante ao PreencherChecklist
+  // Compressão de imagem 
   const comprimirImagemEGerarBase64 = (arquivo) => {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -173,12 +176,12 @@ export default function GerenciarChecklists() {
 
   const handleSalvarEdicaoCompleta = async () => {
     try {
-      const usuarioString = localStorage.getItem('usuario') || '{}';
+      const usuarioString = localStorage.getItem('usuarioLogado') || localStorage.getItem('usuario') || '{}';
       const usuarioSalvo = JSON.parse(usuarioString);
       const setorUsuario = usuarioSalvo.setor || localStorage.getItem('setor') || 'admin';
 
-      // 1. Payload de atualização do checklist (PUT /checklists/{id})
-     const payloadCompleto = {
+      // 1. Payload de atualização do checklist
+      const payloadCompleto = {
         titulo: novoTitulo,
         setor: novoSetor,
         itens: novosItens.map((item, idx) => ({
@@ -186,11 +189,10 @@ export default function GerenciarChecklists() {
           descricao: item.descricao,
           tipo: item.tipo || 'booleano',
           obrigatorio: Boolean(item.obrigatorio),
-          imagem_url: item.imagem_url // <-- ESSA É A LINHA MÁGICA QUE FALTAVA
+          imagem_url: item.imagem_url 
         }))
       };
 
-      // Edição dos textos do checklist
       const resposta = await fetchWithAuth(`/api/checklists/${checklist.id_checklist}`, {
         method: 'PUT',
         headers: {
@@ -203,17 +205,13 @@ export default function GerenciarChecklists() {
       if (resposta.ok) {
         const json = await resposta.json();
         
-        // Versionamento Inteligente: captura o novo ID se o backend clonou o registro
         const novoIdReal = json.data?.id_checklist || checklist.id_checklist;
-        
-        // 2. Envio de novas fotos para os itens recém criados
         const itensRetornados = json.data?.itens || [];
 
         for (let i = 0; i < novosItens.length; i++) {
           const itemAtual = novosItens[i];
           
           if (itemAtual.novaFotoBase64 && itemAtual.novaFotoArquivo) {
-            // Tenta encontrar o ID do item recém-gerado no banco, baseado na ordem
             const itemSalvoMatch = itensRetornados.find(r => r.ordem === itemAtual.ordem);
             const idItemAlvo = itemSalvoMatch?.id_item;
 
@@ -222,7 +220,6 @@ export default function GerenciarChecklists() {
               const arquivoBlob = base64ToBlob(itemAtual.novaFotoBase64);
               formDataFoto.append('imagem', arquivoBlob, itemAtual.novaFotoArquivo.name || `ref_${idItemAlvo}.jpg`);
 
-              // AGORA SIM: Usando o seu fetchWithAuth que já sabe lidar com FormData e accessToken!
               try {
                 const resUpload = await fetchWithAuth(`/api/checklists/itens/${idItemAlvo}/referencia`, {
                   method: 'POST',
@@ -245,7 +242,6 @@ export default function GerenciarChecklists() {
         setEditando(false);
         carregarLista();
 
-        // Atualiza a tela com o ID correto (novo ou atual)
         if (novoIdReal !== checklist.id_checklist) {
           buscarChecklistPorId(novoIdReal);
         } else {
@@ -300,10 +296,17 @@ export default function GerenciarChecklists() {
 
         {checklist && (
           <div className="checklist-detalhes">
-            <div className="status-badge">
-              Status: <span className={checklist.ativo ? 'ativo' : 'inativo'}>
+            <div className="status-badge" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Status: <span className={checklist.ativo ? 'ativo' : 'inativo'}>
                 {checklist.ativo ? 'ATIVO' : 'INATIVO'}
-              </span>
+              </span></span>
+
+              <button 
+                onClick={() => navigate(`/checklists/historico/${checklist.id_checklist}`)}
+                style={{ backgroundColor: '#475569', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600' }}
+              >
+                📜 Ver Histórico
+              </button>
             </div>
 
             {editando ? (
@@ -372,7 +375,6 @@ export default function GerenciarChecklists() {
                           <button type="button" onClick={() => handleRemoverItem(index)} className="btn-remover-item">✕</button>
                         </div>
 
-                        {/* Bloco de Gerenciamento de Foto de Referência do Item */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingLeft: '25px', fontSize: '0.85rem' }}>
                           {fotoExibicao ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#f1f5f9', padding: '4px 8px', borderRadius: '4px' }}>
@@ -512,12 +514,20 @@ export default function GerenciarChecklists() {
                       <td><strong>{item.titulo}</strong></td>
                       <td>{item.setor}</td>
                       <td>{formatarData(item.data_criacao)}</td>
-                      <td>
+                      <td style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                         <button 
                           className="btn-ver-detalhes"
                           onClick={() => buscarChecklistPorId(item.id_checklist)}
                         >
                           Ver
+                        </button>
+                        <button 
+                          className="btn-ver-detalhes"
+                          onClick={() => navigate(`/checklists/historico/${item.id_checklist}`)}
+                          style={{ backgroundColor: '#475569', color: '#fff' }}
+                          title="Ver histórico de versões"
+                        >
+                          📜 Histórico
                         </button>
                       </td>
                     </tr>
@@ -545,7 +555,6 @@ export default function GerenciarChecklists() {
         <button className="btn-voltar-home" onClick={() => navigate('/home')}>Voltar para Home</button>
       </div>
 
-      {/* Modal para Ampliar Imagens */}
       {imagemAmpliada && (
         <div 
           onClick={() => setImagemAmpliada(null)}

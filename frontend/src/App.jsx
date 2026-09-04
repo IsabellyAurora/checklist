@@ -10,6 +10,7 @@ import NovaSenha from './pages/NovaSenha/NovaSenha';
 import MeuPerfil from './pages/MeuPerfil/MeuPerfil';
 import GerenciarUsuarios from './pages/GerenciarUsuarios/GerenciarUsuarios';
 import Header from './components/Header';
+import HistoricoChecklist from './pages/HistoricoChecklist/HistoricoChecklist';
 import './App.css';
 import { DeviceProvider } from './contexts/DeviceContext';
 
@@ -31,6 +32,7 @@ function App() {
           <Route path="/nova-senha" element={<NovaSenha />} />
           <Route path="/meu-perfil" element={<MeuPerfil />} />
           <Route path="/gerenciar-usuarios" element={<GerenciarUsuarios />} />
+          <Route path="/checklists/historico/:id" element={<HistoricoChecklist />} />
         </Routes>
       </DeviceProvider>
     </BrowserRouter>
