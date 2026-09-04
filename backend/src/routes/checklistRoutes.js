@@ -2,8 +2,8 @@ const express = require('express');
 const router = express.Router();
 const checklistController = require('../controllers/checklistController');
 const checkAdmin = require('../middlewares/checkAdmin');
-const { uploadReferencia } = require('../middlewares/uploadMiddleware');
-const verificarToken = require('../middlewares/authMiddleware'); // Linha adicionada
+const { uploadMemoria, otimizarImagem } = require('../middlewares/uploadMiddleware');
+const verificarToken = require('../middlewares/authMiddleware'); 
 
 /**
  * @swagger
@@ -144,7 +144,7 @@ router.get('/checklists/:id', checklistController.buscarChecklist);
  * @swagger
  * /checklists/{id}:
  *   put:
- *     summary: Atualiza o título de um checklist
+ *     summary: Atualiza o título e itens de um checklist (Cria nova versão se já houver execuções)
  *     tags: [Checklists]
  *     parameters:
  *       - in: path
@@ -166,6 +166,21 @@ router.get('/checklists/:id', checklistController.buscarChecklist);
  *             properties:
  *               titulo:
  *                 type: string
+ *               setor:
+ *                 type: string
+ *               itens:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     ordem:
+ *                       type: integer
+ *                     descricao:
+ *                       type: string
+ *                     tipo:
+ *                       type: string
+ *                     obrigatorio:
+ *                       type: boolean
  *     responses:
  *       200:
  *         description: Checklist atualizado com sucesso.
@@ -223,5 +238,12 @@ router.delete('/checklists/:id', checkAdmin, checklistController.excluirChecklis
  *       200:
  *         description: Imagem de referência salva com sucesso.
  */
-router.post('/checklists/itens/:id_item/referencia', verificarToken(), uploadReferencia.single('imagem'), checklistController.uploadReferenciaItem);
+router.post(
+  '/checklists/itens/:id_item/referencia', 
+  verificarToken(), 
+  uploadMemoria.single('imagem'), 
+  otimizarImagem('referencias'), 
+  checklistController.uploadReferenciaItem
+);
+
 module.exports = router;

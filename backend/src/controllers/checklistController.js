@@ -1,5 +1,5 @@
 const checklistModel = require('../models/checklistModel');
-const asyncHandler = require('../middlewares/asyncHandler'); // Declarado apenas uma vez aqui no topo
+const asyncHandler = require('../middlewares/asyncHandler'); 
 
 const criarChecklist = asyncHandler(async (req, res) => {
   const { titulo, setor, itens } = req.body;
@@ -59,29 +59,25 @@ const buscarChecklist = asyncHandler(async (req, res) => {
 
 const atualizarChecklist = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { titulo } = req.body;
+  const { titulo, setor, itens } = req.body;
+  
+  // Extrai o ID do usuário do middleware de autenticação (fallback para 1 se não estiver configurado)
+  const idUsuario = req.usuario ? req.usuario.id_usuario : 1; 
 
-  if (!titulo) {
+  if (!titulo || !setor || !itens || !Array.isArray(itens) || itens.length === 0) {
     return res.status(400).json({
       success: false,
-      error: 'O título é obrigatório para atualização.',
+      error: 'O título, setor e lista de itens são obrigatórios para atualização.',
     });
   }
 
-  const checklistAtualizado = await checklistModel.atualizarTituloChecklist(id, titulo);
-
-  if (!checklistAtualizado) {
-    return res.status(404).json({
-      success: false,
-      error: 'Checklist não encontrado.',
-    });
-  }
+  const idFinal = await checklistModel.editarChecklistComVersionamento(id, titulo, setor, itens, idUsuario);
 
   return res.status(200).json({
     success: true,
     data: {
-      mensagem: 'Título do checklist atualizado com sucesso!',
-      checklist: checklistAtualizado,
+      mensagem: 'Checklist atualizado com sucesso!',
+      id_checklist: idFinal,
     },
   });
 });
@@ -107,8 +103,6 @@ const excluirChecklist = asyncHandler(async (req, res) => {
   });
 });
 
-// Removida a segunda declaração do asyncHandler que causava o erro.
-// Alterado itemModel para checklistModel
 const uploadReferenciaItem = asyncHandler(async (req, res) => {
   const { id_item } = req.params;
 
@@ -116,10 +110,8 @@ const uploadReferenciaItem = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, error: 'Nenhuma imagem enviada.' });
   }
 
-  // O multer salva na pasta correta graças ao uploadReferencia
   const caminhoRelativo = `/uploads/referencias/${req.file.filename}`;
   
-  // Chamando a função a partir do checklistModel
   const atualizado = await checklistModel.anexarReferenciaNoItem(id_item, caminhoRelativo);
 
   if (!atualizado) {

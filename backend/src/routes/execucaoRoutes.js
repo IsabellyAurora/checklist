@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const execucaoController = require('../controllers/execucaoController');
 const verificarToken = require('../middlewares/authMiddleware');
-const { uploadEvidencia } = require('../middlewares/uploadMiddleware');
+const { uploadMemoria, otimizarImagem } = require('../middlewares/uploadMiddleware');
 
 /**
  * @swagger
@@ -135,6 +135,12 @@ router.get('/execucoes/:id', verificarToken(), execucaoController.buscarPorId);
  *       200:
  *         description: Imagem anexada com sucesso.
  */
-router.post('/respostas/:id_resposta/imagem', verificarToken(), uploadEvidencia.single('imagem'), execucaoController.uploadEvidenciaResposta);
+router.post(
+  '/respostas/:id_resposta/imagem', 
+  verificarToken(), 
+  uploadMemoria.single('imagem'), 
+  otimizarImagem('evidencias'), 
+  execucaoController.uploadEvidenciaResposta
+);
 
 module.exports = router;
