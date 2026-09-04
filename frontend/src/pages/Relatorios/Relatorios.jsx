@@ -48,10 +48,43 @@ export default function Relatorios() {
 
   const verDetalhes = async (id_execucao) => {
     try {
+      // 1. Busca os detalhes da execução (respostas do usuário e evidências)
       const resposta = await fetchWithAuth(`/api/execucoes/${id_execucao}`);
       if (resposta.ok) {
         const json = await resposta.json();
-        setDetalhes(json.data || json); 
+        const dadosExecucao = json.data || json;
+
+        // 2. Busca o Checklist original para pegar as Fotos de Referência
+        const idChecklist = dadosExecucao.id_checklist;
+        if (idChecklist) {
+          try {
+            const resChecklist = await fetchWithAuth(`/api/checklists/${idChecklist}`);
+            if (resChecklist.ok) {
+              const checkJson = await resChecklist.json();
+              const dadosChecklist = checkJson.data || checkJson;
+
+              // Criar um "dicionário" (mapa) para achar a referência rápida pelo ID do item
+              const mapaReferencias = {};
+              if (dadosChecklist.itens) {
+                dadosChecklist.itens.forEach(item => {
+                  mapaReferencias[item.id_item] = item.imagem_url || item.imagem_referencia;
+                });
+              }
+
+              // Anexar a foto de referência original em cada resposta
+              if (dadosExecucao.respostas) {
+                dadosExecucao.respostas = dadosExecucao.respostas.map(resp => ({
+                  ...resp,
+                  imagem_referencia_original: mapaReferencias[resp.id_item] || null
+                }));
+              }
+            }
+          } catch (errChecklist) {
+            console.error("Não foi possível carregar as fotos de referência", errChecklist);
+          }
+        }
+
+        setDetalhes(dadosExecucao);
       } else {
         alert('Erro ao buscar detalhes da execução.');
       }
@@ -60,7 +93,6 @@ export default function Relatorios() {
     }
   };
 
-  // Trava blindada contra as 3 horas a mais do fuso horário
   const formatarDataHora = (dataIso) => {
     if (!dataIso) return '-';
     const data = new Date(dataIso);
@@ -82,7 +114,7 @@ export default function Relatorios() {
     window.print();
   };
 
-  // 3. Aplica os filtros em TODA a base de dados que está na memória
+  // 3. Aplica os filtros em TODA a base de dados
   const execucoesFiltradas = execucoes.filter((exec) => {
     const matchId = filtroId ? String(exec.id_execucao).includes(filtroId) : true;
     const matchUsuario = filtroUsuario 
@@ -103,7 +135,6 @@ export default function Relatorios() {
   const totalPages = Math.ceil(execucoesFiltradas.length / itensPorPagina) || 1;
   const indexInicio = (page - 1) * itensPorPagina;
   const indexFim = indexInicio + itensPorPagina;
-  // Pega apenas os 10 itens correspondentes à página atual
   const execucoesPaginadas = execucoesFiltradas.slice(indexInicio, indexFim);
 
   return (
@@ -290,27 +321,54 @@ export default function Relatorios() {
                         )}
                       </div>
 
-                      {/* Exibição da Imagem de Evidência */}
-                      {resp.imagem_evidencia && (
-                        <div style={{ marginTop: '1rem' }}>
-                          <p style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#475569', marginBottom: '0.3rem' }}>
-                            📸 Evidência Fotográfica:
-                          </p>
-                          <img 
-                            src={resp.imagem_evidencia} 
-                            alt="Evidência" 
-                            title="Clique para ampliar"
-                            onClick={() => setImagemAmpliada(resp.imagem_evidencia)}
-                            style={{ 
-                              width: '120px', height: '120px', objectFit: 'cover', 
-                              borderRadius: '6px', border: '1px solid #cbd5e1', 
-                              cursor: 'pointer', transition: 'transform 0.2s' 
-                            }}
-                            onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
-                            onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-                          />
-                        </div>
-                      )}
+                      {/* Exibição lado a lado: Imagem de Referência e Imagem de Evidência */}
+                      <div style={{ display: 'flex', gap: '2rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+                        
+                        {/* Imagem de Referência (Do Checklist Original) */}
+                        {resp.imagem_referencia_original && (
+                          <div>
+                            <p style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#475569', marginBottom: '0.3rem' }}>
+                              📋 Padrão (Referência):
+                            </p>
+                            <img 
+                              src={resp.imagem_referencia_original} 
+                              alt="Referência" 
+                              title="Clique para ampliar"
+                              onClick={() => setImagemAmpliada(resp.imagem_referencia_original)}
+                              style={{ 
+                                width: '120px', height: '120px', objectFit: 'cover', 
+                                borderRadius: '6px', border: '2px solid #cbd5e1', 
+                                cursor: 'pointer', transition: 'transform 0.2s' 
+                              }}
+                              onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+                              onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+                            />
+                          </div>
+                        )}
+
+                        {/* Imagem de Evidência (Enviada pelo Operador) */}
+                        {resp.imagem_evidencia && (
+                          <div>
+                            <p style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#475569', marginBottom: '0.3rem' }}>
+                              📸 Encontrado (Evidência):
+                            </p>
+                            <img 
+                              src={resp.imagem_evidencia} 
+                              alt="Evidência" 
+                              title="Clique para ampliar"
+                              onClick={() => setImagemAmpliada(resp.imagem_evidencia)}
+                              style={{ 
+                                width: '120px', height: '120px', objectFit: 'cover', 
+                                borderRadius: '6px', border: '2px solid #0284c7', 
+                                cursor: 'pointer', transition: 'transform 0.2s' 
+                              }}
+                              onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+                              onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+                            />
+                          </div>
+                        )}
+
+                      </div>
                     </li>
                   ))}
                 </ul>
