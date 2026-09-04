@@ -127,11 +127,31 @@ const uploadReferenciaItem = asyncHandler(async (req, res) => {
   });
 });
 
+const listarVersoesChecklist = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  
+  const historico = await checklistModel.buscarHistoricoVersoes(id);
+
+  if (!historico) {
+    return res.status(404).json({
+      success: false,
+      error: 'Checklist não encontrado.',
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    data: historico,
+  });
+});
+
+
 module.exports = {
   criarChecklist,
   listarChecklists,
   buscarChecklist,
   atualizarChecklist,
   excluirChecklist,
-  uploadReferenciaItem
+  uploadReferenciaItem,
+  listarVersoesChecklist,
 };

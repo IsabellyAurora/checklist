@@ -246,4 +246,27 @@ router.post(
   checklistController.uploadReferenciaItem
 );
 
+/**
+ * @swagger
+ * /checklists/{id}/versoes:
+ *   get:
+ *     summary: Retorna o histórico completo de versões de um checklist
+ *     tags: [Checklists]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: header
+ *         name: x-setor-usuario
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Histórico de versões retornado com sucesso.
+ */
+router.get('/checklists/:id/versoes', checkAdmin, checklistController.listarVersoesChecklist);
+
 module.exports = router;

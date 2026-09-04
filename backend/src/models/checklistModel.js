@@ -162,6 +162,45 @@ const anexarReferenciaNoItem = async (idItem, caminhoImagem) => {
   return rowCount > 0;
 };
 
+const buscarHistoricoVersoes = async (idChecklist) => {
+  // 1. Descobre a raiz da árvore do checklist
+  const { rows: [base] } = await pool.query(
+    'SELECT id_checklist, id_checklist_origem FROM checklist WHERE id_checklist = $1',
+    [idChecklist]
+  );
+  
+  if (!base) return null;
+
+  // Se ele já for um clone/filho, a raiz é a origem; se for o primeiro, a raiz é ele mesmo
+  const idOrigem = base.id_checklist_origem || base.id_checklist;
+
+  // 2. Busca todas as versões (raiz + clones) da mais recente para a mais antiga
+  const resChecklists = await pool.query(
+    `SELECT id_checklist, titulo, setor, ativo, data_criacao, versao, id_checklist_origem 
+     FROM checklist 
+     WHERE id_checklist = $1 OR id_checklist_origem = $1 
+     ORDER BY id_checklist DESC`,
+    [idOrigem]
+  );
+
+  // 3. Agrega os itens de cada versão para preencher o modal de detalhes no front
+  const historicoCompleto = [];
+  
+  for (const chk of resChecklists.rows) {
+    const resItens = await pool.query(
+      'SELECT * FROM item WHERE id_checklist = $1 ORDER BY ordem ASC',
+      [chk.id_checklist]
+    );
+    
+    historicoCompleto.push({
+      ...chk,
+      itens: resItens.rows
+    });
+  }
+
+  return historicoCompleto;
+};
+
 module.exports = {
   criarChecklistComItens,
   listarChecklists,
@@ -169,4 +208,5 @@ module.exports = {
   editarChecklistComVersionamento, 
   inativarChecklist,
   anexarReferenciaNoItem,
+  buscarHistoricoVersoes,
 };
