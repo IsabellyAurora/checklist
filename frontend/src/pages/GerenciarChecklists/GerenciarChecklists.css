@@ -100,3 +100,141 @@
 /* Botão Voltar */
 .btn-voltar-home { width: 100%; padding: 0.75rem; background-color: white; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; margin-top: 1rem; font-size: 1rem; }
 .btn-voltar-home:hover { background-color: #f0f0f0; }
+/* ==========================================================
+   ESTILOS PARA A EDIÇÃO COMPLETA DE CHECKLISTS E ITENS
+   ================================================---------- */
+
+.bloco-edicao-completa {
+  background-color: #f9fbfd;
+  border: 1px solid #e1e8ed;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 15px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.bloco-edicao-completa h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #2c3e50;
+  font-size: 1.2rem;
+  border-bottom: 2px solid #eaeaea;
+  padding-bottom: 8px;
+}
+
+.form-group-edicao {
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-group-edicao label {
+  font-weight: 600;
+  color: #34495e;
+  font-size: 0.9rem;
+}
+
+.itens-edicao-secao {
+  margin-top: 20px;
+  border-top: 1px dashed #cbd5e1;
+  padding-top: 15px;
+}
+
+.itens-edicao-secao h4 {
+  color: #475569;
+  font-size: 1rem;
+  margin-bottom: 12px;
+}
+
+/* Linha individual de cada pergunta */
+.item-linha-edicao {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  align-items: center;
+  background: #ffffff;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.item-linha-edicao:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.item-linha-edicao span {
+  font-weight: bold;
+  color: #64748b;
+  min-width: 25px;
+}
+
+.item-linha-edicao input[type="text"] {
+  flex: 2;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.item-linha-edicao select {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background-color: #fff;
+  font-size: 0.9rem;
+}
+
+.item-linha-edicao label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #475569;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* Botões específicos de edição */
+.btn-remover-item {
+  background-color: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.2s;
+}
+
+.btn-remover-item:hover {
+  background-color: #f87171;
+  color: #fff;
+}
+
+.btn-adicionar-item {
+  background-color: #f1f5f9;
+  color: #0f172a;
+  border: 1px dashed #94a3b8;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  width: 100%;
+  text-align: center;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.btn-adicionar-item:hover {
+  background-color: #e2e8f0;
+  border-color: #64748b;
+}
+
+.botoes-edicao-acao {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}

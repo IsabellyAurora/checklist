@@ -96,22 +96,30 @@ const editarChecklistComVersionamento = async (idChecklist, titulo, setor, itens
       await client.query('UPDATE checklist SET ativo = false WHERE id_checklist = $1', [idChecklist]);
 
       const { rows: [dadosAntigos] } = await client.query(
-        'SELECT versao, id_checklist_origem FROM checklist WHERE id_checklist = $1', 
+        'SELECT * FROM checklist WHERE id_checklist = $1', 
         [idChecklist]
       );
+      
       const origem = dadosAntigos.id_checklist_origem || idChecklist;
       const novaVersao = (dadosAntigos.versao || 1) + 1;
 
       const resNovo = await client.query(
-        'INSERT INTO checklist (titulo, setor, versao, id_checklist_origem) VALUES ($1, $2, $3, $4) RETURNING id_checklist',
+        'INSERT INTO checklist (titulo, setor, versao, id_checklist_origem) VALUES ($1, $2, $3, $4) RETURNING *',
         [titulo, setor, novaVersao, origem]
       );
-      idFinal = resNovo.rows[0].id_checklist;
+      
+      const dadosNovos = resNovo.rows[0];
+      idFinal = dadosNovos.id_checklist;
 
       await client.query(
-        `INSERT INTO log_auditoria (id_usuario, acao, tabela_afetada, id_registro, dados_antigos) 
-         VALUES ($1, 'VERSIONAMENTO', 'checklist', $2, $3)`,
-        [idUsuario, idFinal, JSON.stringify(dadosAntigos)]
+        `INSERT INTO log_auditoria (id_usuario, acao, tabela_afetada, id_registro, dados_antigos, dados_novos) 
+         VALUES ($1, 'VERSIONAMENTO', 'checklist', $2, $3, $4)`,
+        [
+          idUsuario, 
+          idFinal, 
+          JSON.stringify(dadosAntigos), 
+          JSON.stringify(dadosNovos)
+        ]
       );
     } else {
       await client.query('UPDATE checklist SET titulo = $1, setor = $2 WHERE id_checklist = $3', [titulo, setor, idChecklist]);
@@ -156,7 +164,7 @@ module.exports = {
   criarChecklistComItens,
   listarChecklists,
   buscarChecklistPorId,
-  editarChecklistComVersionamento, // Nome atualizado
+  editarChecklistComVersionamento, 
   inativarChecklist,
   anexarReferenciaNoItem,
 };

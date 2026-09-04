@@ -1,22 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchWithAuth } from '../../utils/api'; // 1. Importando o interceptor JWT
+import { fetchWithAuth } from '../../utils/api'; // Interceptor JWT
 import './GerenciarChecklists.css';
 
 export default function GerenciarChecklists() {
-  // Estados para o gerenciamento individual
   const [idBusca, setIdBusca] = useState('');
   const [checklist, setChecklist] = useState(null);
   const [editando, setEditando] = useState(false);
-  const [novoTitulo, setNovoTitulo] = useState('');
   
-  // Estados para a listagem e paginação
+  const [novoTitulo, setNovoTitulo] = useState('');
+  const [novoSetor, setNovoSetor] = useState('');
+  const [novosItens, setNovosItens] = useState([]);
+  
   const [listaChecklists, setListaChecklists] = useState([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [setorFiltro, setSetorFiltro] = useState('');
 
   const [alerta, setAlerta] = useState({ visivel: false, tipo: '', titulo: '', mensagem: '' });
+  const [imagemAmpliada, setImagemAmpliada] = useState(null);
   const navigate = useNavigate();
 
   const mostrarAlerta = (tipo, titulo, mensagem) => {
@@ -25,9 +27,6 @@ export default function GerenciarChecklists() {
 
   const fecharAlerta = () => setAlerta({ ...alerta, visivel: false });
 
-  // --------------------------------------------------------
-  // LÓGICA DE LISTAGEM (GET /checklists)
-  // --------------------------------------------------------
   useEffect(() => {
     carregarLista();
   }, [page, setorFiltro]);
@@ -37,7 +36,6 @@ export default function GerenciarChecklists() {
       let url = `/api/checklists?page=${page}&limit=5`;
       if (setorFiltro) url += `&setor=${setorFiltro}`;
 
-      // 2. Substituído fetch por fetchWithAuth
       const resposta = await fetchWithAuth(url);
       if (resposta.ok) {
         const json = await resposta.json();
@@ -59,19 +57,26 @@ export default function GerenciarChecklists() {
     return new Date(dataIso).toLocaleDateString('pt-BR');
   };
 
-  // --------------------------------------------------------
-  // LÓGICA INDIVIDUAL (GET /checklists/{id}, PUT, DELETE)
-  // --------------------------------------------------------
   const buscarChecklistPorId = async (id) => {
     if (!id) return;
     try {
-      // 3. Substituído fetch por fetchWithAuth
       const resposta = await fetchWithAuth(`/api/checklists/${id}`);
       if (resposta.ok) {
         const json = await resposta.json();
         const dados = json.data || json;
         setChecklist(dados);
         setNovoTitulo(dados.titulo);
+        setNovoSetor(dados.setor);
+        
+        // Mapeia os itens garantindo os campos de imagem
+        const itensCompletos = (dados.itens || []).map(item => ({
+          ...item,
+          imagem_url: item.imagem_url || item.imagem_referencia || '',
+          novaFotoBase64: null,
+          novaFotoArquivo: null
+        }));
+        
+        setNovosItens(itensCompletos);
         setIdBusca(id);
         setEditando(false);
       } else {
@@ -88,23 +93,157 @@ export default function GerenciarChecklists() {
     buscarChecklistPorId(idBusca);
   };
 
-  const handleSalvarTitulo = async () => {
+  const handleItemChange = (index, campo, valor) => {
+    const itensAtualizados = [...novosItens];
+    itensAtualizados[index][campo] = valor;
+    setNovosItens(itensAtualizados);
+  };
+
+  // Compressão de imagem semelhante ao PreencherChecklist
+  const comprimirImagemEGerarBase64 = (arquivo) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(arquivo);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 640; 
+          const MAX_HEIGHT = 640;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height = Math.round((height *= MAX_WIDTH / width));
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width = Math.round((width *= MAX_HEIGHT / height));
+              height = MAX_HEIGHT;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const base64Comprimido = canvas.toDataURL('image/jpeg', 0.6);
+          resolve(base64Comprimido);
+        };
+      };
+    });
+  };
+
+  const base64ToBlob = (base64) => {
+    const byteCharacters = atob(base64.split(',')[1]);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    return new Blob([byteArray], { type: 'image/jpeg' });
+  };
+
+  const handleFotoItemChange = async (index, e) => {
+    const arquivo = e.target.files[0];
+    if (arquivo) {
+      const fotoLeveBase64 = await comprimirImagemEGerarBase64(arquivo);
+      const itensAtualizados = [...novosItens];
+      itensAtualizados[index].novaFotoBase64 = fotoLeveBase64;
+      itensAtualizados[index].novaFotoArquivo = arquivo;
+      setNovosItens(itensAtualizados);
+    }
+  };
+
+  const handleAdicionarItem = () => {
+    setNovosItens([
+      ...novosItens,
+      { ordem: novosItens.length + 1, descricao: '', tipo: 'booleano', obrigatorio: true, imagem_url: '', novaFotoBase64: null, novaFotoArquivo: null }
+    ]);
+  };
+
+  const handleRemoverItem = (index) => {
+    const itensFiltrados = novosItens.filter((_, i) => i !== index);
+    const itensReordenados = itensFiltrados.map((item, idx) => ({ ...item, ordem: idx + 1 }));
+    setNovosItens(itensReordenados);
+  };
+
+  // Salvar atualização completa (PUT) e envio opcional de novas fotos de referência
+  const handleSalvarEdicaoCompleta = async () => {
     try {
-      // 4. Substituído fetch por fetchWithAuth
+      const usuarioSalvo = JSON.parse(localStorage.getItem('usuario') || '{}');
+      const setorUsuario = usuarioSalvo.setor || localStorage.getItem('setor') || 'admin';
+
+      // 1. Payload de atualização do checklist (PUT /checklists/{id})
+      const payloadCompleto = {
+        titulo: novoTitulo,
+        setor: novoSetor,
+        itens: novosItens.map((item, idx) => ({
+          ordem: idx + 1,
+          descricao: item.descricao,
+          tipo: item.tipo || 'booleano',
+          obrigatorio: Boolean(item.obrigatorio)
+        }))
+      };
+
       const resposta = await fetchWithAuth(`/api/checklists/${checklist.id_checklist}`, {
         method: 'PUT',
-        body: JSON.stringify({ titulo: novoTitulo })
+        headers: {
+          'Content-Type': 'application/json',
+          'x-setor-usuario': setorUsuario
+        },
+        body: JSON.stringify(payloadCompleto)
       });
 
       if (resposta.ok) {
-        mostrarAlerta('sucesso', 'Sucesso!', 'Título atualizado com sucesso.');
-        setChecklist({ ...checklist, titulo: novoTitulo });
+        const json = await resposta.json();
+        
+        // Versionamento Inteligente: captura o novo ID se o backend clonou o registro
+        const novoIdReal = json.data?.id_checklist || checklist.id_checklist;
+        
+        // 2. Se houver novas fotos anexadas em algum item, fazemos o upload pontual
+        // (Nota: Se o backend gerar um novo ID com novos itens, buscamos os novos itens para sincronizar se necessário)
+        const itensRetornados = json.data?.itens || [];
+
+        for (let i = 0; i < novosItens.length; i++) {
+          const itemAtual = novosItens[i];
+          if (itemAtual.novaFotoBase64 && itemAtual.novaFotoArquivo) {
+            // Tenta encontrar o ID do item correspondente no registro salvo
+            const itemSalvoMatch = itensRetornados.find(r => r.ordem === itemAtual.ordem);
+            const idItemAlvo = itemSalvoMatch?.id_item || itemAtual.id_item;
+
+            if (idItemAlvo) {
+              const formDataFoto = new FormData();
+              const arquivoBlob = base64ToBlob(itemAtual.novaFotoBase64);
+              formDataFoto.append('imagem', arquivoBlob, itemAtual.novaFotoArquivo.name || `ref_${idItemAlvo}.jpg`);
+
+              // Rota padrão para atualizar a imagem de referência do item/pergunta (ajuste se a sua rota diferir)
+              await fetchWithAuth(`/api/itens/${idItemAlvo}/imagem`, {
+                method: 'POST',
+                body: formDataFoto
+              }).catch(err => console.error("Erro ao enviar imagem do item:", err));
+            }
+          }
+        }
+
+        mostrarAlerta('sucesso', 'Sucesso!', json.data?.mensagem || 'Checklist atualizado com sucesso!');
         setEditando(false);
         carregarLista();
+
+        if (novoIdReal !== checklist.id_checklist) {
+          buscarChecklistPorId(novoIdReal);
+        } else {
+          buscarChecklistPorId(checklist.id_checklist);
+        }
       } else {
-        mostrarAlerta('erro', 'Erro', 'Não foi possível atualizar o título.');
+        const erroJson = await resposta.json().catch(() => ({}));
+        mostrarAlerta('erro', 'Erro', erroJson.message || 'Não foi possível atualizar o checklist.');
       }
     } catch (erro) {
+      console.error('Erro ao atualizar:', erro);
       mostrarAlerta('erro', 'Sem conexão', 'Erro ao conectar com o servidor.');
     }
   };
@@ -114,7 +253,6 @@ export default function GerenciarChecklists() {
     if (!confirmar) return;
 
     try {
-      // 5. Substituído fetch por fetchWithAuth
       const resposta = await fetchWithAuth(`/api/checklists/${checklist.id_checklist}`, { 
         method: 'DELETE' 
       });
@@ -132,7 +270,7 @@ export default function GerenciarChecklists() {
 
   return (
     <div className="gerenciar-container">
-      <div className="gerenciar-card">
+      <div className="gerenciar-card" style={{ maxWidth: '950px' }}>
         <h2>Gerenciar Checklists</h2>
         <p>Busque um ID para editar, ou selecione na lista abaixo.</p>
 
@@ -155,47 +293,174 @@ export default function GerenciarChecklists() {
               </span>
             </div>
 
-            <div className="edicao-titulo">
-              {editando ? (
-                <div className="titulo-edit-group">
+            {editando ? (
+              <div className="bloco-edicao-completa">
+                <h3>Editando Checklist</h3>
+                
+                <div className="form-group-edicao">
+                  <label>Título:</label>
                   <input 
                     type="text" 
                     value={novoTitulo} 
                     onChange={(e) => setNovoTitulo(e.target.value)}
                     className="input-editar-titulo"
                   />
-                  <button onClick={handleSalvarTitulo} className="btn-salvar-titulo">Salvar</button>
+                </div>
+
+                <div className="form-group-edicao">
+                  <label>Setor:</label>
+                  <select 
+                    value={novoSetor} 
+                    onChange={(e) => setNovoSetor(e.target.value)} 
+                    className="select-filtro"
+                  >
+                    <option value="admin">Admin</option>
+                    <option value="ti">TI</option>
+                    <option value="manutencao">Manutenção</option>
+                    <option value="rh">RH</option>
+                    <option value="operacao">Operacional</option>
+                    <option value="limpeza">Limpeza</option>
+                  </select>
+                </div>
+
+                <div className="itens-edicao-secao">
+                  <h4>Editar Itens / Perguntas e Fotos de Referência:</h4>
+                  {novosItens.map((item, index) => {
+                    const fotoExibicao = item.novaFotoBase64 || item.imagem_url;
+
+                    return (
+                      <div key={index} className="item-linha-edicao" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <span>#{index + 1}</span>
+                          <input 
+                            type="text" 
+                            value={item.descricao} 
+                            onChange={(e) => handleItemChange(index, 'descricao', e.target.value)}
+                            placeholder="Descrição da pergunta"
+                            style={{ flex: 2 }}
+                          />
+                          <select 
+                            value={item.tipo} 
+                            onChange={(e) => handleItemChange(index, 'tipo', e.target.value)}
+                            style={{ flex: 1 }}
+                          >
+                            <option value="booleano">Booleano (Sim/Não)</option>
+                            <option value="texto">Texto</option>
+                            <option value="numero">Número</option>
+                          </select>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={item.obrigatorio} 
+                              onChange={(e) => handleItemChange(index, 'obrigatorio', e.target.checked)}
+                            />
+                            Obrigatório
+                          </label>
+                          <button type="button" onClick={() => handleRemoverItem(index)} className="btn-remover-item">✕</button>
+                        </div>
+
+                        {/* Bloco de Gerenciamento de Foto de Referência do Item */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingLeft: '25px', fontSize: '0.85rem' }}>
+                          {fotoExibicao ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#f1f5f9', padding: '4px 8px', borderRadius: '4px' }}>
+                              <img 
+                                src={fotoExibicao} 
+                                alt="Ref" 
+                                onClick={() => setImagemAmpliada(fotoExibicao)}
+                                style={{ width: '35px', height: '35px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '1px solid #cbd5e1' }}
+                                title="Clique para ampliar"
+                              />
+                              <span>Foto de referência ativa</span>
+                              <button 
+                                type="button" 
+                                onClick={() => {
+                                  const atualizados = [...novosItens];
+                                  atualizados[index].imagem_url = '';
+                                  atualizados[index].novaFotoBase64 = null;
+                                  atualizados[index].novaFotoArquivo = null;
+                                  setNovosItens(atualizados);
+                                }}
+                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold' }}
+                                title="Remover foto"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <span style={{ color: '#64748b', fontStyle: 'italic' }}>Sem foto de referência</span>
+                          )}
+
+                          <label htmlFor={`foto-ref-${index}`} style={{ cursor: 'pointer', backgroundColor: '#0284c7', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem' }}>
+                            📷 {fotoExibicao ? 'Alterar Foto' : 'Adicionar Foto'}
+                          </label>
+                          <input 
+                            id={`foto-ref-${index}`}
+                            type="file" 
+                            accept="image/*" 
+                            onChange={(e) => handleFotoItemChange(index, e)} 
+                            style={{ display: 'none' }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <button type="button" onClick={handleAdicionarItem} className="btn-adicionar-item">
+                    + Adicionar Pergunta
+                  </button>
+                </div>
+
+                <div className="botoes-edicao-acao">
+                  <button onClick={handleSalvarEdicaoCompleta} className="btn-salvar-titulo">Salvar Alterações</button>
                   <button onClick={() => setEditando(false)} className="btn-cancelar">Cancelar</button>
                 </div>
-              ) : (
+              </div>
+            ) : (
+              <div>
                 <div className="titulo-view-group">
-                  <h3>{checklist.titulo}</h3>
-                  <button onClick={() => setEditando(true)} className="btn-editar-titulo">✏️ Editar</button>
+                  <h3>{checklist.titulo} (Setor: {checklist.setor})</h3>
+                  <button onClick={() => setEditando(true)} className="btn-editar-titulo">✏️ Editar Completo</button>
                 </div>
-              )}
-            </div>
 
-            <div className="itens-lista">
-              <h4>Itens de Verificação:</h4>
-              {checklist.itens && checklist.itens.length > 0 ? (
-                <ul>
-                  {checklist.itens.map((item, index) => (
-                    <li key={item.id_item || index}>
-                      <strong>{item.ordem}.</strong> {item.descricao} 
-                      <em> ({item.tipo}) {item.obrigatorio && '*' }</em>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p>Nenhum item encontrado para este checklist.</p>
-              )}
-            </div>
+                <div className="itens-lista">
+                  <h4>Itens de Verificação:</h4>
+                  {checklist.itens && checklist.itens.length > 0 ? (
+                    <ul>
+                      {checklist.itens.map((item, index) => {
+                        const refUrl = item.imagem_url || item.imagem_referencia;
+                        return (
+                          <li key={item.id_item || index} style={{ marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                            <div>
+                              <strong>{item.ordem}.</strong> {item.descricao} 
+                              <em> ({item.tipo}) {item.obrigatorio && '*' }</em>
+                            </div>
+                            {refUrl && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingLeft: '15px' }}>
+                                <img 
+                                  src={refUrl} 
+                                  alt="Referência" 
+                                  onClick={() => setImagemAmpliada(refUrl)}
+                                  style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '1px solid #cbd5e1' }}
+                                  title="Clique para ampliar"
+                                />
+                                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Foto de referência</span>
+                              </div>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <p>Nenhum item encontrado para este checklist.</p>
+                  )}
+                </div>
 
-            <div className="botoes-acao-gerenciar">
-              <button onClick={handleInativar} className="btn-inativar" disabled={!checklist.ativo}>
-                Inativar Checklist
-              </button>
-            </div>
+                <div className="botoes-acao-gerenciar">
+                  <button onClick={handleInativar} className="btn-inativar" disabled={!checklist.ativo}>
+                    Inativar Checklist
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -266,6 +531,37 @@ export default function GerenciarChecklists() {
 
         <button className="btn-voltar-home" onClick={() => navigate('/home')}>Voltar para Home</button>
       </div>
+
+      {/* Modal para Ampliar Imagens */}
+      {imagemAmpliada && (
+        <div 
+          onClick={() => setImagemAmpliada(null)}
+          style={{
+            position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+            backgroundColor: 'rgba(0, 0, 0, 0.8)', display: 'flex', justifyContent: 'center',
+            alignItems: 'center', zIndex: 2000, cursor: 'pointer', padding: '2rem'
+          }}
+        >
+          <div style={{ position: 'relative', maxWidth: '90%', maxHeight: '90%' }} onClick={(e) => e.stopPropagation()}>
+            <img 
+              src={imagemAmpliada} 
+              alt="Ampliada" 
+              style={{ maxWidth: '100%', maxHeight: '85vh', borderRadius: '8px', objectFit: 'contain', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', display: 'block', margin: '0 auto' }} 
+            />
+            <button 
+              onClick={() => setImagemAmpliada(null)}
+              style={{
+                position: 'absolute', top: '-15px', right: '-15px', backgroundColor: '#ef4444',
+                color: 'white', border: 'none', borderRadius: '50%', width: '35px', height: '35px',
+                fontSize: '1.2rem', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center',
+                boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {alerta.visivel && (
         <div className="modal-overlay">
