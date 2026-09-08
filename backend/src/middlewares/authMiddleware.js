@@ -2,7 +2,6 @@ const jwt = require('jsonwebtoken');
 
 const verificarToken = (rolesPermitidas = []) => {
   return (req, res, next) => {
-    // Busca o token no cabeçalho Authorization: Bearer <token>
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -13,17 +12,17 @@ const verificarToken = (rolesPermitidas = []) => {
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
-      req.usuario = decoded; // Fica disponível como req.usuario.id_usuario e req.usuario.setor
+      req.usuario = decoded; // Fica disponível como req.usuario.id_usuario e req.usuario.setores
 
-      // ⚠️ CORREÇÃO: Transformamos tudo em minúsculo para comparar sem erros
       if (rolesPermitidas.length > 0) {
-        // Pega o setor do usuário e converte para minúsculo
-        const setorUsuario = (req.usuario.setor || '').trim().toLowerCase();
-        
-        // Converte as permissões exigidas pela rota para minúsculo também
+        // Agora mapeia o array de setores do token (ou fallback vazio)
+        const setoresUsuario = (req.usuario.setores || []).map(s => s.trim().toLowerCase());
         const roles = rolesPermitidas.map(role => role.trim().toLowerCase());
 
-        if (!roles.includes(setorUsuario)) {
+        // Verifica se o usuário possui pelo menos um dos setores permitidos
+        const temPermissao = roles.some(role => setoresUsuario.includes(role));
+
+        if (!temPermissao) {
           return res.status(403).json({ success: false, error: 'Acesso negado para este setor.' });
         }
       }

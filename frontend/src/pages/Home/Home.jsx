@@ -13,6 +13,9 @@ export default function Home() {
   const [observacao, setObservacao] = useState('');
   const [modalAviso, setModalAviso] = useState({ visivel: false, tipo: '', titulo: '', mensagem: '' });
 
+  // Estado para guardar os nomes reais dos setores
+  const [nomesSetores, setNomesSetores] = useState([]);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -34,11 +37,93 @@ export default function Home() {
   }, [navigate]);
 
   useEffect(() => {
-    if (user && user.setor && user.setor.toLowerCase() === 'admin') {
-      buscarNaoConformidadesNoFrontend();
+    if (user) {
+      carregarSetores(); // Carrega e traduz os setores do usuário
+
+      // Validação segura convertendo para String (evita quebrar se for número)
+      const isAdmin = user.setores?.some(s => String(s).toLowerCase() === 'admin');
+      
+      if (isAdmin) {
+        buscarNaoConformidadesNoFrontend();
+      }
     }
   }, [user]);
 
+  // ==========================================
+  // LÓGICA DE SETORES (PAI > FILHO COM CASCATA)
+  // ==========================================
+  const construirNomeSetor = (setorAtual, listaCompleta) => {
+    if (!setorAtual.id_setor_pai || String(setorAtual.id_setor_pai) === '0') {
+      return setorAtual.nome; 
+    }
+    
+    const setorPai = listaCompleta.find(s => String(s.id_setor) === String(setorAtual.id_setor_pai));
+    
+    if (setorPai && String(setorPai.id_setor) !== String(setorAtual.id_setor)) {
+      const nomeDoPai = construirNomeSetor(setorPai, listaCompleta);
+      return `${nomeDoPai} > ${setorAtual.nome}`;
+    }
+    
+    return setorAtual.nome;
+  };
+
+  const carregarSetores = async () => {
+    try {
+      // Pega o array de setores do usuário com as novas lógicas do backend
+      let arraySetoresId = [];
+      if (Array.isArray(user?.setores)) {
+        arraySetoresId = user.setores;
+      } else if (user?.setores_ids) {
+        arraySetoresId = user.setores_ids;
+      } else if (user?.setor) {
+        arraySetoresId = [user.setor]; 
+      }
+
+      const arrayNormalizado = arraySetoresId.map(val => String(val).toLowerCase());
+
+      const res = await fetchWithAuth('/api/setores');
+      if (res.ok) {
+        const json = await res.json();
+        const setoresBrutos = json.data || [];
+        
+        // 1. Acha os setores que o usuário tem explicitamente no perfil
+        const setoresExplicitos = setoresBrutos.filter(s => 
+          arrayNormalizado.includes(String(s.id_setor)) || 
+          arrayNormalizado.includes(String(s.nome).toLowerCase())
+        );
+
+        // 2. Cascata: Pega o ID dos explícitos e busca todos os filhos, netos, etc
+        let idsPermitidos = new Set(setoresExplicitos.map(s => Number(s.id_setor)));
+        
+        let adicionouNovo = true;
+        while(adicionouNovo) {
+          adicionouNovo = false;
+          setoresBrutos.forEach(s => {
+            if (s.id_setor_pai && idsPermitidos.has(Number(s.id_setor_pai)) && !idsPermitidos.has(Number(s.id_setor))) {
+              idsPermitidos.add(Number(s.id_setor));
+              adicionouNovo = true;
+            }
+          });
+        }
+
+        // 3. Pega todos os objetos de setor baseados nos IDs finais permitidos e converte pro texto bonito
+        const setoresFinaisDoUsuario = setoresBrutos.filter(s => idsPermitidos.has(Number(s.id_setor)));
+        
+        const setoresTraduzidos = setoresFinaisDoUsuario.map(s => construirNomeSetor(s, setoresBrutos));
+        
+        // Ordena alfabeticamente para ficar bonito na tela
+        setoresTraduzidos.sort((a, b) => a.localeCompare(b));
+          
+        setNomesSetores(setoresTraduzidos);
+      }
+    } catch (erro) {
+      console.error("Erro ao carregar setores", erro);
+    }
+  };
+
+  // ==========================================
+  // LÓGICA DE NÃO CONFORMIDADES
+  // ==========================================
   const buscarNaoConformidadesNoFrontend = async () => {
     try {
       const res = await fetchWithAuth('/api/execucoes?page=1&limit=15');
@@ -54,9 +139,7 @@ export default function Home() {
             const detalhes = detJson.data || detJson;
             
             const temErro = detalhes.respostas?.some(r => 
-              r.valor_resposta === 'Não Conforme' || 
-              r.valor_resposta === 'Não' || 
-              r.valor_resposta === 'false'
+              r.valor_resposta === 'Não Conforme' || r.valor_resposta === 'Não' || r.valor_resposta === 'false'
             );
             
             const isPendentePeloBackend = detalhes.status_nc === 'PENDENTE';
@@ -67,16 +150,13 @@ export default function Home() {
                 id_execucao: exec.id_execucao,
                 checklist_titulo: exec.titulo || exec.checklist_titulo,
                 operador: exec.usuario_nome,
-                // Garantindo que puxa a data mais precisa disponível
                 data_execucao: detalhes.data_conclusao || detalhes.data_inicio || exec.data_inicio
               });
             }
           }
         }
         
-        // Ordena para exibir a NC mais recente no topo do popup
         ncsEncontradas.sort((a, b) => new Date(b.data_execucao) - new Date(a.data_execucao));
-        
         setAlertas(ncsEncontradas);
       }
     } catch (erro) {
@@ -117,14 +197,15 @@ export default function Home() {
     }
   };
 
-  // MESMA FUNÇÃO DE FORMATAR DATA DA PÁGINA DE HISTÓRICO
   const formatarData = (dataIso) => {
     if (!dataIso) return '-';
     return new Date(dataIso).toLocaleString('pt-BR');
   };
 
   if (!user) return null; 
-  const isAdmin = user.setor && user.setor.toLowerCase() === 'admin';
+
+  // Checagem segura de Admin para renderizar os botões
+  const isAdmin = user.setores?.some(s => String(s).toLowerCase() === 'admin');
 
   return (
     <div className="home-container">
@@ -135,40 +216,21 @@ export default function Home() {
             <p>Escolha uma das ações abaixo para gerenciar o sistema:</p>
             
             <div className="admin-actions">
-             <button className="primary-button" onClick={() => navigate('/cadastro-usuario')}>
-               Cadastrar Novo Usuário
-             </button>
-             
-             <button className="primary-button" onClick={() => navigate('/gerenciar-usuarios')}>
-               Gerenciar Usuários (Resetar Senha)
-             </button>
-
-              <button className="primary-button" onClick={() => navigate('/cadastro-checklist')}>
-                Criar Novo Checklist
-              </button>
-              
-              <button className="primary-button" onClick={() => navigate('/relatorios')}>
-                Ver Relatórios
-              </button>
-              
-              <button className="primary-button" onClick={() => navigate('/gerenciar-checklists')}>
-                Gerenciar Checklists
-              </button>
-
-              <button className="primary-button" onClick={() => navigate('/historico-ncs')}>
-                📜 Histórico de Não Conformidades
-              </button>
+             <button className="primary-button" onClick={() => navigate('/cadastro-usuario')}>Cadastrar Novo Usuário</button>
+             <button className="primary-button" onClick={() => navigate('/gerenciar-usuarios')}>Gerenciar Usuários (Resetar Senha)</button>
+              <button className="primary-button" onClick={() => navigate('/cadastro-checklist')}>Criar Novo Checklist</button>
+              <button className="primary-button" onClick={() => navigate('/relatorios')}>Ver Relatórios</button>
+              <button className="primary-button" onClick={() => navigate('/gerenciar-checklists')}>Gerenciar Checklists</button>
+              <button className="primary-button" onClick={() => navigate('/historico-ncs')}>📜 Histórico de Não Conformidades</button>
             </div>
           </div>
         ) : (
           <div className="form-card">
             <h2>Checklist Diário</h2>
-            <p>Setor de atuação: <strong>{user.setor || 'Não especificado'}</strong></p>
-            
+            {/* EXIBIÇÃO BONITA DOS SETORES */}
+            <p>Setores de atuação: <strong>{nomesSetores.length > 0 ? nomesSetores.join(', ') : 'Não especificado'}</strong></p>
             <div className="admin-actions">
-              <button className="primary-button" onClick={() => navigate('/preencher-checklist')}>
-                Iniciar Checklist {user.setor ? `- ${user.setor}` : ''}
-              </button>
+              <button className="primary-button" onClick={() => navigate('/preencher-checklist')}>Iniciar Checklist</button>
             </div>
           </div>
         )}
@@ -183,7 +245,6 @@ export default function Home() {
             </div>
             <button className="btn-toggle-alerta">{popupAberto ? '▼' : '▲'}</button>
           </div>
-          
           {popupAberto && (
             <div className="alerta-body">
               {alertas.map((alerta) => (
@@ -191,10 +252,7 @@ export default function Home() {
                   <span className="alerta-os">Execução Nº {alerta.id_execucao}</span>
                   <p className="alerta-checklist"><strong>Checklist:</strong> {alerta.checklist_titulo}</p>
                   <p className="alerta-operador"><strong>Operador:</strong> {alerta.operador}</p>
-                  
-                  {/* AQUI A DATA É FORMATADA IGUAL NO HISTÓRICO */}
                   <p className="alerta-pergunta"><small>Data: {formatarData(alerta.data_execucao)}</small></p>
-                  
                   <button className="btn-arrumado" onClick={() => abrirModalResolver(alerta.id_execucao)}>
                     ✅ Adicionar Tratativa e Resolver
                   </button>
@@ -207,33 +265,16 @@ export default function Home() {
 
       {modalResolver.visivel && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '400px', textAlign: 'left' }}>
-            <h3 style={{ color: '#1e293b', marginBottom: '10px' }}>Resolver Pendência</h3>
-            <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '15px' }}>
-              Qual foi a tratativa realizada para resolver a NC da execução <strong>#{modalResolver.idExecucao}</strong>?
-            </p>
-            
+          <div className="modal-content">
+            <h3>Resolver Pendência</h3>
+            <p>Qual foi a tratativa realizada para resolver a NC da execução <strong>#{modalResolver.idExecucao}</strong>?</p>
             <textarea 
               style={{ width: '100%', minHeight: '90px', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '15px', fontFamily: 'inherit', resize: 'none' }}
-              placeholder="Ex: Válvula substituída conforme OS..."
-              value={observacao}
-              onChange={(e) => setObservacao(e.target.value)}
+              value={observacao} onChange={(e) => setObservacao(e.target.value)}
             />
-            
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button 
-                onClick={() => setModalResolver({ visivel: false, idExecucao: null })}
-                style={{ flex: 1, padding: '10px', borderRadius: '6px', border: 'none', backgroundColor: '#64748b', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={confirmarResolucao}
-                style={{ flex: 1, padding: '10px', borderRadius: '6px', border: 'none', backgroundColor: '#10b981', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}
-                disabled={!observacao.trim()}
-              >
-                Salvar no Banco
-              </button>
+              <button className="secondary-button" style={{ flex: 1 }} onClick={() => setModalResolver({ visivel: false, idExecucao: null })}>Cancelar</button>
+              <button className="primary-button" style={{ flex: 1 }} onClick={confirmarResolucao} disabled={!observacao.trim()}>Salvar</button>
             </div>
           </div>
         </div>
@@ -243,16 +284,9 @@ export default function Home() {
         <div className="modal-overlay">
           <div className="modal-content">
             {modalAviso.tipo === 'erro' ? '⚠️' : '✅'}
-            <h3 className={modalAviso.tipo === 'erro' ? 'texto-erro' : 'texto-sucesso'} style={{ marginTop: '10px' }}>
-              {modalAviso.titulo}
-            </h3>
+            <h3 className={modalAviso.tipo === 'erro' ? 'texto-erro' : 'texto-sucesso'}>{modalAviso.titulo}</h3>
             <p>{modalAviso.mensagem}</p>
-            <button 
-              style={{ marginTop: '15px', padding: '8px 20px', borderRadius: '6px', border: 'none', backgroundColor: '#f57c00', color: 'white', fontWeight: 'bold', cursor: 'pointer' }} 
-              onClick={() => setModalAviso({ ...modalAviso, visivel: false })}
-            >
-              OK
-            </button>
+            <button className="modal-button" onClick={() => setModalAviso({ ...modalAviso, visivel: false })}>OK</button>
           </div>
         </div>
       )}

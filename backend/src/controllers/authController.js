@@ -21,13 +21,19 @@ const login = asyncHandler(async (req, res) => {
   }
 
   // 1. Gera o Access Token (curta duração, vai na memória do React)
-  const accessToken = jwt.sign(
-    { id_usuario: usuario.id_usuario, setor: usuario.setor },
+  // ⚠️ ATUALIZADO: Agora enviando o array 'setores' (plural) no payload
+const accessToken = jwt.sign(
+    { 
+      id_usuario: usuario.id_usuario, 
+      setores: usuario.setores, 
+      setores_ids: usuario.setores_ids // <-- Nova linha mágica
+    }, 
     process.env.JWT_ACCESS_SECRET,
     { expiresIn: '15m' }
   );
 
   // 2. Gera o Refresh Token (longa duração, vai no Cookie HttpOnly)
+  // O refresh token não precisa dos setores, pois ele busca do banco na hora de renovar
   const refreshToken = jwt.sign(
     { id_usuario: usuario.id_usuario },
     process.env.JWT_REFRESH_SECRET,
@@ -48,7 +54,7 @@ const login = asyncHandler(async (req, res) => {
     success: true,
     data: {
       mensagem: 'Login realizado com sucesso!',
-      usuario: usuarioSemSenha,
+      usuario: usuarioSemSenha, // O frontend vai receber os dados do usuário, incluindo o array de setores
       accessToken // Retorna apenas o token de acesso no JSON
     },
   });
@@ -70,8 +76,9 @@ const renovarToken = asyncHandler(async (req, res) => {
     }
 
     // Gera um novo Access Token
+    // ⚠️ ATUALIZADO: Inclui o array 'setores' no novo token também
     const novoAccessToken = jwt.sign(
-      { id_usuario: usuario.id_usuario, setor: usuario.setor },
+      { id_usuario: usuario.id_usuario, setores: usuario.setores },
       process.env.JWT_ACCESS_SECRET,
       { expiresIn: '15m' }
     );
@@ -89,7 +96,6 @@ const logout = asyncHandler(async (req, res) => {
   res.clearCookie('refreshToken', { httpOnly: true, sameSite: 'strict' });
   return res.status(200).json({ success: true, mensagem: 'Logout realizado.' });
 });
-
 
 const trocarSenha = asyncHandler(async (req, res) => {
   const { nome, senha } = req.body;

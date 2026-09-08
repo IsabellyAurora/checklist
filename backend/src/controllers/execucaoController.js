@@ -2,7 +2,6 @@ const execucaoModel = require('../models/execucaoModel');
 const asyncHandler = require('../middlewares/asyncHandler');
 
 const registrarExecucao = asyncHandler(async (req, res) => {
-  // 1. Pega as datas e a ordem de serviço do req.body
   const { id_checklist, respostas, data_inicio, data_conclusao, ordem_servico } = req.body;
   const id_usuario = req.usuario.id_usuario;
 
@@ -12,7 +11,6 @@ const registrarExecucao = asyncHandler(async (req, res) => {
   
   const statusNC = temNC ? 'PENDENTE' : 'SEM_NC';
 
-  // 2. Repassa os novos parâmetros para o Model
   const id_execucao = await execucaoModel.salvarExecucao(
     id_checklist, 
     id_usuario, 
@@ -37,10 +35,15 @@ const registrarExecucao = asyncHandler(async (req, res) => {
 const listar = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, os, data_inicio, data_fim } = req.query;
   
+  // Verifica se o usuário é admin
+  const isAdmin = req.usuario?.setores?.some(s => String(s).toLowerCase() === 'admin');
+
   const filtros = {
     ordem_servico: os,
     data_inicio: data_inicio,
-    data_fim: data_fim
+    data_fim: data_fim,
+    // Aplica a mesma regra de visão global
+    setoresUsuario: isAdmin ? null : (req.usuario?.setores_ids || [])
   };
   
   const execucoesPaginadas = await execucaoModel.listarExecucoes(
@@ -96,11 +99,15 @@ const uploadEvidenciaResposta = asyncHandler(async (req, res) => {
 });
 
 const listarPendencias = asyncHandler(async (req, res) => {
-  // Pega o status da URL (se existir)
   const { status } = req.query; 
   
-  // Passa o status para o Model
-  const ncs = await execucaoModel.listarNCs(status);
+  // Verifica se o usuário é admin
+  const isAdmin = req.usuario?.setores?.some(s => String(s).toLowerCase() === 'admin');
+  
+  // Se for admin, passa null (traz tudo). Se for operador/supervisor, passa os IDs.
+  const setoresUsuario = isAdmin ? null : (req.usuario?.setores_ids || []); 
+
+  const ncs = await execucaoModel.listarNCs(status, setoresUsuario);
   
   return res.status(200).json({ success: true, data: ncs });
 });

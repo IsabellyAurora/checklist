@@ -10,7 +10,10 @@ export default function HistoricoChecklist() {
   const [detalheVersao, setDetalheVersao] = useState(null);
   const [alerta, setAlerta] = useState({ visivel: false, tipo: '', titulo: '', mensagem: '' });
   
-  // Novo estado para controlar a ampliação da imagem de referência
+  // Estado para armazenar a lista de setores e construir a hierarquia
+  const [setoresDisponiveis, setSetoresDisponiveis] = useState([]);
+
+  // Estado para controlar a ampliação da imagem de referência
   const [imagemAmpliada, setImagemAmpliada] = useState(null);
   
   const navigate = useNavigate();
@@ -26,25 +29,63 @@ export default function HistoricoChecklist() {
 
   useEffect(() => {
     const usuarioSalvo = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
-    const setorUsuario = usuarioSalvo.setor || localStorage.getItem('setor') || '';
+    
+    // NOVA REGRA: Verifica se "admin" está dentro do array de setores
+    const isAdmin = usuarioSalvo.setores?.some(s => s.toLowerCase() === 'admin');
 
-    // Proteção: Apenas Admin
-    if (setorUsuario.toLowerCase() !== 'admin') {
+    if (!isAdmin) {
       mostrarAlerta('erro', 'Acesso Negado', 'Apenas administradores podem visualizar o histórico de versões.');
       return;
     }
 
-    carregarHistoricoVersoes(setorUsuario);
+    carregarSetores();
+    carregarHistoricoVersoes();
   }, [id]);
 
-  const carregarHistoricoVersoes = async (setorUsuario) => {
+  // ==========================================
+  // LÓGICA DE SETORES (PAI > FILHO)
+  // ==========================================
+  const construirNomeSetor = (setorAtual, todosSetores) => {
+    if (!setorAtual.id_setor_pai) return setorAtual.nome; 
+    const setorPai = todosSetores.find(s => s.id_setor === setorAtual.id_setor_pai);
+    if (setorPai) {
+      const nomeDoPai = construirNomeSetor(setorPai, todosSetores);
+      return `${nomeDoPai} > ${setorAtual.nome}`;
+    }
+    return setorAtual.nome;
+  };
+
+  const carregarSetores = async () => {
+    try {
+      const res = await fetchWithAuth('/api/setores');
+      if (res.ok) {
+        const json = await res.json();
+        const setoresBrutos = json.data || [];
+        const formatados = setoresBrutos.map(s => ({ ...s, nomeExibicao: construirNomeSetor(s, setoresBrutos) }));
+        setSetoresDisponiveis(formatados);
+      }
+    } catch (erro) {
+      console.error("Erro ao carregar setores", erro);
+    }
+  };
+
+  const getNomeSetor = (identificador) => {
+    if (!identificador) return '-';
+    // Procura pelo ID ou pelo nome antigo (caso o banco tenha registros velhos como string)
+    const setor = setoresDisponiveis.find(s => s.id_setor === identificador || s.nome === identificador);
+    return setor ? setor.nomeExibicao : identificador;
+  };
+
+  // ==========================================
+  // CARREGAR HISTÓRICO DE VERSÕES
+  // ==========================================
+  const carregarHistoricoVersoes = async () => {
     setCarregando(true);
     try {
-      // Fazendo a requisição passando o header exigido pelo Swagger
       const resposta = await fetchWithAuth(`/api/checklists/${id}/versoes`, {
         method: 'GET',
         headers: {
-          'x-setor-usuario': setorUsuario
+          'x-setor-usuario': 'admin' // Mantido por segurança para o backend
         }
       });
 
@@ -98,7 +139,10 @@ export default function HistoricoChecklist() {
                         {index === 0 && <span className="badge-atual">Versão Atual</span>}
                       </td>
                       <td>{v.titulo}</td>
-                      <td>{v.setor}</td>
+                      
+                      {/* Puxando o nome do setor usando a função inteligente */}
+                      <td>{getNomeSetor(v.id_setor || v.setor)}</td>
+                      
                       <td>
                         <span className={`badge-status ${v.ativo ? 'ativo' : 'inativo'}`}>
                           {v.ativo ? 'VIGENTE' : 'OBSOLETO'}
@@ -135,14 +179,16 @@ export default function HistoricoChecklist() {
               </div>
               
               <p><strong>Título:</strong> {detalheVersao.titulo}</p>
-              <p><strong>Setor:</strong> {detalheVersao.setor}</p>
+              
+              {/* Exibindo o nome formatado no modal */}
+              <p><strong>Setor:</strong> {getNomeSetor(detalheVersao.id_setor || detalheVersao.setor)}</p>
+              
               <p><strong>Criado em:</strong> {formatarData(detalheVersao.data_criacao)}</p>
               
               <h4 style={{ marginTop: '15px', color: '#334155' }}>Perguntas (Status na época):</h4>
               <ul className="historico-lista-itens">
                 {detalheVersao.itens && detalheVersao.itens.length > 0 ? (
                   detalheVersao.itens.map((item, idx) => {
-                    // Pega a URL da imagem de referência de forma segura
                     const refUrl = item.imagem_url || item.imagem_referencia;
 
                     return (

@@ -1,21 +1,56 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchWithAuth } from '../../utils/api'; 
 import './CadastroChecklist.css';
 
 export default function CadastroChecklist() {
   const [titulo, setTitulo] = useState('');
-  const [setor, setSetor] = useState(''); 
+  const [idSetor, setIdSetor] = useState(''); 
   const [ativo, setAtivo] = useState(true);
   
   const [itens, setItens] = useState([
     { descricao: '', tipo: 'booleano', obrigatorio: true, imagem: null, preview: null }
   ]);
   
+  // ESTADO PARA GUARDAR OS SETORES QUE VEM DO BANCO DE DADOS
+  const [setoresDisponiveis, setSetoresDisponiveis] = useState([]);
+  
   const [alerta, setAlerta] = useState({ visivel: false, tipo: '', titulo: '', mensagem: '' });
   const [imagemAmpliada, setImagemAmpliada] = useState(null);
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    carregarSetores();
+  }, []);
+
+  const construirNomeSetor = (setorAtual, todosSetores) => {
+    if (!setorAtual.id_setor_pai) return setorAtual.nome; 
+    const setorPai = todosSetores.find(s => s.id_setor === setorAtual.id_setor_pai);
+    if (setorPai) {
+      const nomeDoPai = construirNomeSetor(setorPai, todosSetores);
+      return `${nomeDoPai} > ${setorAtual.nome}`;
+    }
+    return setorAtual.nome;
+  };
+
+  const carregarSetores = async () => {
+    try {
+      const res = await fetchWithAuth('/api/setores');
+      if (res.ok) {
+        const json = await res.json();
+        const setoresBrutos = json.data || [];
+        const setoresFormatados = setoresBrutos.map(setor => ({
+          ...setor,
+          nomeExibicao: construirNomeSetor(setor, setoresBrutos)
+        }));
+        setoresFormatados.sort((a, b) => a.nomeExibicao.localeCompare(b.nomeExibicao));
+        setSetoresDisponiveis(setoresFormatados);
+      }
+    } catch (erro) {
+      console.error("Erro ao carregar setores", erro);
+    }
+  };
 
   const mostrarAlerta = (tipo, titulo, mensagem) => {
     setAlerta({ visivel: true, tipo, titulo, mensagem });
@@ -58,10 +93,15 @@ export default function CadastroChecklist() {
   const handleCadastro = async (e) => {
     e.preventDefault();
     
-    // 1. Payload em JSON puro para criar o checklist e os itens básicos
+    if (!idSetor) {
+      mostrarAlerta('erro', 'Atenção', 'Você precisa selecionar um setor responsável.');
+      return;
+    }
+    
+    // Agora o Payload envia id_setor (número inteiro) em vez de 'setor' em texto
     const payloadPrincipal = {
       titulo,
-      setor,
+      id_setor: Number(idSetor),
       ativo,
       itens: itens.map((item, index) => ({
         ordem: index + 1,
@@ -72,48 +112,31 @@ export default function CadastroChecklist() {
     };
 
     try {
-      const usuarioStorage = localStorage.getItem('usuarioLogado');
-      const usuarioLogado = usuarioStorage ? JSON.parse(usuarioStorage) : null;
-
-      // Passo 1: Salva o checklist principal e obtém os ID's gerados pelo banco
       const resposta = await fetchWithAuth('/api/checklists', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'x-setor-usuario': usuarioLogado?.setor || '' 
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payloadPrincipal)
       });
 
       if (resposta.ok) {
         const resultadoJson = await resposta.json();
-        
-        // Pega a lista de itens criados que retornou do backend (contendo os id_item gerados)
-        // Ajuste o caminho abaixo (`resultadoJson.data.itens` ou `resultadoJson.itens`) conforme o padrão da API do seu colega
         const itensSalvos = resultadoJson.data?.checklist?.itens || resultadoJson.data?.itens || [];
 
-        // Passo 2: Para cada item que possui uma imagem de referência, envia para a rota específica
         for (let index = 0; index < itens.length; index++) {
           const itemAtual = itens[index];
-          
           if (itemAtual.imagem) {
-            // Como os itens salvos mantêm a mesma ordem (`ordem` ou índice), vinculamos pelo index
             const itemSalvoCorrespondente = itensSalvos[index] || itensSalvos.find(i => i.ordem === index + 1);
-
             if (itemSalvoCorrespondente && itemSalvoCorrespondente.id_item) {
               const formDataImagem = new FormData();
-              formDataImagem.append('imagem', itemAtual.imagem); // Campo exato exigido pela rota do backend
-
+              formDataImagem.append('imagem', itemAtual.imagem);
               await fetchWithAuth(`/api/checklists/itens/${itemSalvoCorrespondente.id_item}/referencia`, {
                 method: 'POST',
                 body: formDataImagem
-                // O navegador define automaticamente o boundary do multipart/form-data
               });
             }
           }
         }
-
-        mostrarAlerta('sucesso', 'Checklist Criado!', 'O novo checklist e suas imagens de referência foram salvos com sucesso.');
+        mostrarAlerta('sucesso', 'Checklist Criado!', 'O novo checklist foi salvo com sucesso.');
       } else {
         const erroData = await resposta.json();
         mostrarAlerta('erro', 'Erro ao salvar', erroData.error || 'Verifique os dados e tente novamente.');
@@ -131,7 +154,6 @@ export default function CadastroChecklist() {
         <p>Defina o título, o setor, adicione os itens de verificação e imagens de referência.</p>
         
         <form onSubmit={handleCadastro} className="checklist-form-container">
-          
           <div className="dados-principais">
             <div className="input-group">
               <label htmlFor="titulo">Título do Checklist</label>
@@ -149,16 +171,16 @@ export default function CadastroChecklist() {
               <label htmlFor="setor">Setor Responsável</label>
               <select
                 id="setor"
-                value={setor}
-                onChange={(e) => setSetor(e.target.value)}
+                value={idSetor}
+                onChange={(e) => setIdSetor(e.target.value)}
                 required
               >
                 <option value="" disabled>Selecione um setor...</option>
-                <option value="ti">Tecnologia da Informação (TI)</option>
-                <option value="manutencao">Manutenção</option>
-                <option value="rh">Recursos Humanos (RH)</option>
-                <option value="operacao">Operacional</option>
-                <option value="limpeza">Limpeza</option>
+                {setoresDisponiveis.map(setor => (
+                  <option key={setor.id_setor} value={setor.id_setor}>
+                    {setor.nomeExibicao}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -177,10 +199,8 @@ export default function CadastroChecklist() {
             <h3>Itens de Verificação</h3>
             {itens.map((item, index) => (
               <div key={index} className="item-row" style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '1rem', backgroundColor: '#f8fafc' }}>
-                
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
                   <span className="item-ordem" style={{ fontWeight: 'bold' }}>#{index + 1}</span>
-                  
                   <div className="item-inputs" style={{ display: 'flex', gap: '0.8rem', flex: 1, flexWrap: 'wrap' }}>
                     <input
                       type="text"
@@ -191,7 +211,6 @@ export default function CadastroChecklist() {
                       className="input-descricao"
                       style={{ flex: 2, minWidth: '200px', padding: '0.5rem' }}
                     />
-                    
                     <select
                       value={item.tipo}
                       onChange={(e) => atualizarItem(index, 'tipo', e.target.value)}
@@ -202,7 +221,6 @@ export default function CadastroChecklist() {
                       <option value="texto">Texto Livre</option>
                       <option value="numero">Número</option>
                     </select>
-
                     <label className="checkbox-obrigatorio" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem' }}>
                       <input
                         type="checkbox"
@@ -212,7 +230,6 @@ export default function CadastroChecklist() {
                       Obrigatório
                     </label>
                   </div>
-
                   <button 
                     type="button" 
                     className="btn-remover-item" 
@@ -263,7 +280,6 @@ export default function CadastroChecklist() {
                     </div>
                   )}
                 </div>
-
               </div>
             ))}
             

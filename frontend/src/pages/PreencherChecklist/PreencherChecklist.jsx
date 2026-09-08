@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchWithAuth } from '../../utils/api'; 
 import './PreencherChecklist.css';
@@ -31,12 +31,13 @@ export default function PreencherChecklist() {
   const [dropdownAberto, setDropdownAberto] = useState(false);
   const [alerta, setAlerta] = useState({ visivel: false, tipo: '', titulo: '', mensagem: '' });
   const [imagemAmpliada, setImagemAmpliada] = useState(null);
+  
+  const [nomesSetores, setNomesSetores] = useState([]);
+  const [todosSetores, setTodosSetores] = useState([]); // Salva todos os setores para usar na interface
 
   const navigate = useNavigate();
 
-  // MÁGICA AQUI: useLayoutEffect roda ANTES do navegador "pintar" a tela. 
-  // Isso elimina 100% o piscar e o pulo.
-  useLayoutEffect(() => {
+  useEffect(() => {
     const scrollSalvo = sessionStorage.getItem('scrollChecklist');
     if (scrollSalvo && checklistAtual) {
       window.scrollTo({ top: parseInt(scrollSalvo), behavior: 'instant' });
@@ -48,7 +49,7 @@ export default function PreencherChecklist() {
     if (!usuario) {
       navigate('/');
     } else {
-      carregarChecklistsDoSetor(usuario.setor);
+      carregarChecklistsDoSetor();
     }
   }, [navigate, usuario]);
 
@@ -78,12 +79,100 @@ export default function PreencherChecklist() {
     if (alerta.tipo === 'sucesso') navigate('/home');
   };
 
-  const carregarChecklistsDoSetor = async (setor) => {
+  // ==========================================
+  // LÓGICA BLINDADA: SETOR PAI > FILHO
+  // ==========================================
+  const construirNomeSetor = (setorAtual, listaCompleta) => {
+    // Força a string para não dar problema se for Number 0 ou Texto '0'
+    if (!setorAtual.id_setor_pai || String(setorAtual.id_setor_pai) === '0') {
+      return setorAtual.nome; 
+    }
+    
+    // Procura o pai garantindo que ambos são comparados como textos
+    const setorPai = listaCompleta.find(s => String(s.id_setor) === String(setorAtual.id_setor_pai));
+    
+    // Evita loop infinito caso o pai aponte para ele mesmo por erro no banco
+    if (setorPai && String(setorPai.id_setor) !== String(setorAtual.id_setor)) {
+      const nomeDoPai = construirNomeSetor(setorPai, listaCompleta);
+      return `${nomeDoPai} > ${setorAtual.nome}`;
+    }
+    
+    return setorAtual.nome;
+  };
+
+  const getNomeSetorParaDropdown = (idSetor) => {
+    if (!idSetor) return '';
+    const setor = todosSetores.find(s => String(s.id_setor) === String(idSetor));
+    return setor ? construirNomeSetor(setor, todosSetores) : '';
+  };
+
+  // ==========================================
+  // LÓGICA DE CASCATA PARA OS CHECKLISTS
+  // ==========================================
+  const carregarChecklistsDoSetor = async () => {
     try {
-      const response = await fetchWithAuth(`/api/checklists?setor=${setor}`);
-      if (response.ok) {
-        const json = await response.json();
-        setChecklistsDisponiveis(json.data || []);
+      let arraySetoresId = [];
+      if (Array.isArray(usuario?.setores)) {
+        arraySetoresId = usuario.setores;
+      } else if (usuario?.setores_ids) {
+        arraySetoresId = usuario.setores_ids;
+      } else if (usuario?.setor) {
+        arraySetoresId = [usuario.setor]; 
+      }
+
+      const arrayNormalizado = arraySetoresId.map(val => String(val).toLowerCase());
+      
+      const resSetores = await fetchWithAuth('/api/setores');
+      if (resSetores.ok) {
+        const jsonSetores = await resSetores.json();
+        const setoresBrutos = jsonSetores.data || [];
+        setTodosSetores(setoresBrutos);
+        
+        // 1. Acha os setores que o usuário tem explicitamente no perfil
+        const setoresExplicitos = setoresBrutos.filter(s => 
+          arrayNormalizado.includes(String(s.id_setor)) || 
+          arrayNormalizado.includes(String(s.nome).toLowerCase())
+        );
+
+        setNomesSetores(setoresExplicitos.map(s => construirNomeSetor(s, setoresBrutos)));
+
+        // 2. Cascata: Pega o ID dos explícitos e busca todos os filhos, netos, etc
+        let idsPermitidos = new Set(setoresExplicitos.map(s => Number(s.id_setor)));
+        
+        let adicionouNovo = true;
+        while(adicionouNovo) {
+          adicionouNovo = false;
+          setoresBrutos.forEach(s => {
+            if (s.id_setor_pai && idsPermitidos.has(Number(s.id_setor_pai)) && !idsPermitidos.has(Number(s.id_setor))) {
+              idsPermitidos.add(Number(s.id_setor));
+              adicionouNovo = true;
+            }
+          });
+        }
+
+        const idsReaisDeBusca = Array.from(idsPermitidos);
+
+        if (idsReaisDeBusca.length === 0) {
+          setChecklistsDisponiveis([]);
+          return;
+        }
+
+        // 3. Busca na API todos os checklists de todos esses setores e filhos
+        const promessas = idsReaisDeBusca.map(id => fetchWithAuth(`/api/checklists?id_setor=${id}`));
+        const respostasFetch = await Promise.all(promessas);
+        
+        let checklistsUnidos = [];
+        for (const res of respostasFetch) {
+          if (res.ok) {
+            const json = await res.json();
+            const dados = json.data || [];
+            checklistsUnidos = [...checklistsUnidos, ...dados];
+          }
+        }
+        
+        // Remove duplicados
+        const checklistsUnicos = Array.from(new Map(checklistsUnidos.map(item => [item.id_checklist, item])).values());
+        setChecklistsDisponiveis(checklistsUnicos);
       }
     } catch (erro) {
       console.error('Erro ao buscar checklists do setor:', erro);
@@ -218,7 +307,7 @@ export default function PreencherChecklist() {
     return new Blob([byteArray], { type: 'image/jpeg' });
   };
 
- const handleEnviarChecklist = async (e) => {
+  const handleEnviarChecklist = async (e) => {
     e.preventDefault();
     const dataConclusao = obterDataHoraLocal();
 
@@ -231,12 +320,9 @@ export default function PreencherChecklist() {
       dataConclusao: dataConclusao,
       ordem_servico: ordemServico,
       
-      // Enviamos as respostas ajustadas para o backend reconhecer a NC
       respostas: Object.entries(respostas).map(([id_item, dados]) => {
-        // Encontra o item correspondente para saber o tipo original dele
         const itemOriginal = checklistAtual.itens.find(i => i.id_item === Number(id_item));
         
-        // Se o backend espera 'Não' para disparar a NC, convertemos se o usuário escolheu 'Não Conforme'
         let respostaFormatada = dados.valor_resposta;
         if (respostaFormatada === 'Não Conforme') {
           respostaFormatada = 'Não'; 
@@ -244,7 +330,7 @@ export default function PreencherChecklist() {
 
         return {
           id_item: Number(id_item),
-          tipo: itemOriginal?.tipo || 'booleano', // Garante que o tipo vai junto para o controller ler!
+          tipo: itemOriginal?.tipo || 'booleano', 
           valor_resposta: respostaFormatada,
           observacao: dados.observacao
         };
@@ -258,12 +344,8 @@ export default function PreencherChecklist() {
         body: JSON.stringify(payloadPrincipal)
       });
       
-      // ... (o restante do código continua igual)
-
-     if (response.ok) {
+      if (response.ok) {
         const resultadoJson = await response.json();
-        
-        // Pega as respostas salvas para processar as imagens (mantido igual)
         const respostasSalvas = resultadoJson.data?.execucao?.respostas || resultadoJson.data?.respostas || [];
 
         for (const [id_item, dados] of Object.entries(respostas)) {
@@ -285,7 +367,6 @@ export default function PreencherChecklist() {
 
         sessionStorage.removeItem('checklistRascunho'); 
         
-        // NOVO: Feedback inteligente lendo a flag do Backend
         const possuiNC = resultadoJson.data?.possui_nc;
         
         if (possuiNC) {
@@ -317,7 +398,8 @@ export default function PreencherChecklist() {
     <div className="preencher-container">
       <div className="preencher-card" style={{ maxWidth: '900px' }}>
         <h2>Preencher Checklist</h2>
-        <p>Setor: <strong>{usuario?.setor}</strong></p>
+        
+        <p>Setores de Atuação: <strong>{nomesSetores.length > 0 ? nomesSetores.join(', ') : 'Não especificado'}</strong></p>
 
         <div className="selecao-checklist" style={{ position: 'relative' }}>
           <label htmlFor="busca-checklist">Busque ou selecione uma tarefa:</label>
@@ -340,9 +422,16 @@ export default function PreencherChecklist() {
                   key={c.id_checklist}
                   className="dropdown-item"
                   onClick={() => handleSelecionarDoDropdown(c)}
+                  style={{ display: 'flex', flexDirection: 'column', padding: '10px' }}
                 >
-                  <span className="dropdown-icone">📄</span>
-                  {c.titulo}
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <span className="dropdown-icone" style={{ marginRight: '8px' }}>📄</span>
+                    <strong>{c.titulo}</strong>
+                  </div>
+                  {/* EXIBINDO O SETOR PAI E FILHO NO DROPDOWN */}
+                  <span style={{ fontSize: '0.8rem', color: '#64748b', marginLeft: '28px' }}>
+                    Setor: {getNomeSetorParaDropdown(c.id_setor)}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -350,7 +439,7 @@ export default function PreencherChecklist() {
           
           {dropdownAberto && checklistsFiltrados.length === 0 && (
             <div className="dropdown-empty">
-              Nenhum checklist encontrado com esse nome.
+              Nenhum checklist encontrado para seus setores.
             </div>
           )}
         </div>
@@ -552,7 +641,7 @@ export default function PreencherChecklist() {
           <div style={{ position: 'relative', maxWidth: '90%', maxHeight: '90%' }} onClick={(e) => e.stopPropagation()}>
             <img 
               src={imagemAmpliada} 
-              alt="Ampliada" 
+              alt="Imagem Ampliada" 
               style={{ maxWidth: '100%', maxHeight: '85vh', borderRadius: '8px', objectFit: 'contain', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', display: 'block', margin: '0 auto' }} 
             />
             <button 

@@ -14,24 +14,87 @@ export default function Relatorios() {
   const [filtroData, setFiltroData] = useState('');
   const [filtroOs, setFiltroOs] = useState('');
 
+  // ESTADOS PARA OS SETORES
+  const [setoresDisponiveis, setSetoresDisponiveis] = useState([]);
+
   // Estado para a imagem ampliada (Modal)
   const [imagemAmpliada, setImagemAmpliada] = useState(null);
 
   const navigate = useNavigate();
 
-  // 1. Volta para a página 1 toda vez que o usuário digitar em algum filtro
+  // 1. Bloqueio de Segurança e Carregamento Inicial
+  useEffect(() => {
+    const userData = localStorage.getItem('usuarioLogado');
+    if (!userData) {
+      navigate('/');
+      return;
+    }
+
+    const parsedUser = JSON.parse(userData);
+    // NOVA REGRA: Verifica se "admin" está dentro do array de setores convertendo para string
+    const isAdmin = parsedUser.setores?.some(s => String(s).toLowerCase() === 'admin');
+
+    if (!isAdmin) {
+      alert("Acesso negado. Apenas administradores podem acessar os relatórios gerais.");
+      navigate('/home');
+      return;
+    }
+
+    carregarSetores();
+    carregarTodasExecucoes();
+  }, [navigate]);
+
+  // 2. Volta para a página 1 toda vez que o usuário digitar em algum filtro
   useEffect(() => {
     setPage(1);
   }, [filtroId, filtroUsuario, filtroData, filtroOs]);
 
-  // 2. Carrega TODOS os registros apenas UMA vez ao abrir a tela
-  useEffect(() => {
-    carregarTodasExecucoes();
-  }, []);
 
+  // ==========================================
+  // LÓGICA DE SETORES (PAI > FILHO BLINDADA)
+  // ==========================================
+  const construirNomeSetor = (setorAtual, todosSetores) => {
+    // Força a comparação como texto
+    if (!setorAtual.id_setor_pai || String(setorAtual.id_setor_pai) === '0') {
+      return setorAtual.nome; 
+    }
+    
+    // Encontra o pai convertendo ambos os IDs para string
+    const setorPai = todosSetores.find(s => String(s.id_setor) === String(setorAtual.id_setor_pai));
+    
+    // Evita loop infinito
+    if (setorPai && String(setorPai.id_setor) !== String(setorAtual.id_setor)) {
+      const nomeDoPai = construirNomeSetor(setorPai, todosSetores);
+      return `${nomeDoPai} > ${setorAtual.nome}`;
+    }
+    return setorAtual.nome;
+  };
+
+  const carregarSetores = async () => {
+    try {
+      const res = await fetchWithAuth('/api/setores');
+      if (res.ok) {
+        const json = await res.json();
+        const setoresBrutos = json.data || [];
+        const formatados = setoresBrutos.map(s => ({ ...s, nomeExibicao: construirNomeSetor(s, setoresBrutos) }));
+        setSetoresDisponiveis(formatados);
+      }
+    } catch (erro) {
+      console.error("Erro ao carregar setores", erro);
+    }
+  };
+
+  const getNomeSetor = (identificador) => {
+    if (!identificador) return 'Não especificado';
+    const setor = setoresDisponiveis.find(s => String(s.id_setor) === String(identificador) || s.nome === identificador);
+    return setor ? setor.nomeExibicao : identificador;
+  };
+
+  // ==========================================
+  // LÓGICA DO RELATÓRIO
+  // ==========================================
   const carregarTodasExecucoes = async () => {
     try {
-      // Pedimos um limite altíssimo para o backend trazer tudo e podermos filtrar no front
       const resposta = await fetchWithAuth(`/api/execucoes?page=1&limit=5000`);
       if (resposta.ok) {
         const json = await resposta.json();
@@ -48,7 +111,7 @@ export default function Relatorios() {
 
   const verDetalhes = async (id_execucao) => {
     try {
-      // 1. Busca os detalhes da execução (respostas do usuário e evidências)
+      // 1. Busca os detalhes da execução
       const resposta = await fetchWithAuth(`/api/execucoes/${id_execucao}`);
       if (resposta.ok) {
         const json = await resposta.json();
@@ -63,7 +126,6 @@ export default function Relatorios() {
               const checkJson = await resChecklist.json();
               const dadosChecklist = checkJson.data || checkJson;
 
-              // Criar um "dicionário" (mapa) para achar a referência rápida pelo ID do item
               const mapaReferencias = {};
               if (dadosChecklist.itens) {
                 dadosChecklist.itens.forEach(item => {
@@ -71,7 +133,6 @@ export default function Relatorios() {
                 });
               }
 
-              // Anexar a foto de referência original em cada resposta
               if (dadosExecucao.respostas) {
                 dadosExecucao.respostas = dadosExecucao.respostas.map(resp => ({
                   ...resp,
@@ -146,16 +207,7 @@ export default function Relatorios() {
             <h2>Relatórios de Execução</h2>
             <p>Histórico de todos os checklists preenchidos.</p>
 
-            <div className="filtros-container" style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-              gap: '1rem', 
-              marginBottom: '1.5rem', 
-              backgroundColor: '#f8fafc', 
-              padding: '1rem', 
-              borderRadius: '8px', 
-              border: '1px solid #e2e8f0' 
-            }}>
+            <div className="filtros-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem', backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '0.3rem', color: '#475569' }}>Filtrar por ID:</label>
                 <input 
@@ -224,7 +276,10 @@ export default function Relatorios() {
                         <td className="col-destaque">#{exec.id_execucao}</td>
                         <td>
                           <strong>{exec.checklist_titulo || exec.titulo}</strong><br/>
-                          <small>{exec.setor}</small>
+                          
+                          {/* Traduz o Setor com Inteligência Hierárquica Blindada */}
+                          <small>{getNomeSetor(exec.id_setor || exec.setor)}</small>
+                          
                           {exec.ordem_servico && <><br/><small style={{ color: '#d32f2f', fontWeight: 'bold' }}>OS: {exec.ordem_servico}</small></>}
                         </td>
                         <td>{exec.usuario_nome}</td>
@@ -293,7 +348,10 @@ export default function Relatorios() {
             <div className="info-execucao">
               <p><strong>Execução Nº:</strong> {detalhes.id_execucao}</p>
               <p><strong>Ordem de Serviço (OS):</strong> <span style={{ color: '#d32f2f', fontWeight: 'bold' }}>{detalhes.ordem_servico || 'Não informada'}</span></p>
-              <p><strong>Checklist:</strong> {detalhes.titulo} ({detalhes.setor})</p>
+              
+              {/* Traduz o Setor na visão de detalhes */}
+              <p><strong>Checklist:</strong> {detalhes.titulo} ({getNomeSetor(detalhes.id_setor || detalhes.setor)})</p>
+              
               <p><strong>Operador:</strong> {detalhes.usuario_nome}</p>
               <p><strong>Status:</strong> {detalhes.status || 'Concluído'}</p>
               <hr style={{ margin: '1rem 0' }} />

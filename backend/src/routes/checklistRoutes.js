@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const checklistController = require('../controllers/checklistController');
-const checkAdmin = require('../middlewares/checkAdmin');
 const { uploadMemoria, otimizarImagem } = require('../middlewares/uploadMiddleware');
 const verificarToken = require('../middlewares/authMiddleware'); 
 
@@ -13,10 +12,10 @@ const verificarToken = require('../middlewares/authMiddleware');
  *     tags: [Checklists]
  *     parameters:
  *       - in: query
- *         name: setor
+ *         name: id_setor
  *         schema:
- *           type: string
- *         description: "Filtra os checklists por um setor específico (exemplo: admin, manutencao)"
+ *           type: integer
+ *         description: "Filtra os checklists pelo ID numérico de um setor específico"
  *       - in: query
  *         name: page
  *         schema:
@@ -32,49 +31,11 @@ const verificarToken = require('../middlewares/authMiddleware');
  *     responses:
  *       200:
  *         description: Objeto contendo os dados de paginação e o array de checklists.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 totalItems:
- *                   type: integer
- *                   example: 25
- *                 totalPages:
- *                   type: integer
- *                   example: 3
- *                 currentPage:
- *                   type: integer
- *                   example: 1
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id_checklist:
- *                         type: integer
- *                       titulo:
- *                         type: string
- *                       setor:
- *                         type: string
- *                       ativo:
- *                         type: boolean
- *                       data_criacao:
- *                         type: string
- *                         format: date-time
  *   post:
  *     summary: Cria um novo checklist vinculado a um setor com seus itens
  *     tags: [Checklists]
- *     parameters:
- *       - in: header
- *         name: x-setor-usuario
- *         required: true
- *         schema:
- *           type: string
- *           example: admin
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -84,8 +45,8 @@ const verificarToken = require('../middlewares/authMiddleware');
  *             properties:
  *               titulo:
  *                 type: string
- *               setor:
- *                 type: string
+ *               id_setor:
+ *                 type: integer
  *               itens:
  *                 type: array
  *                 items:
@@ -101,14 +62,10 @@ const verificarToken = require('../middlewares/authMiddleware');
  *                       type: boolean
  *             example:
  *               titulo: "Inspeção Diária de Empilhadeira"
- *               setor: "manutencao"
+ *               id_setor: 1
  *               itens:
  *                 - ordem: 1
  *                   descricao: "Verificar nível de óleo"
- *                   tipo: "TEXTO"
- *                   obrigatorio: true
- *                 - ordem: 2
- *                   descricao: "Condição dos pneus"
  *                   tipo: "TEXTO"
  *                   obrigatorio: true
  *     responses:
@@ -117,8 +74,8 @@ const verificarToken = require('../middlewares/authMiddleware');
  *       400:
  *         description: Dados inválidos.
  */
-router.get('/checklists', checklistController.listarChecklists);
-router.post('/checklists', checkAdmin, checklistController.criarChecklist);
+router.get('/checklists', verificarToken(), checklistController.listarChecklists);
+router.post('/checklists', verificarToken(['admin']), checklistController.criarChecklist);
 
 /**
  * @swagger
@@ -146,17 +103,14 @@ router.get('/checklists/:id', checklistController.buscarChecklist);
  *   put:
  *     summary: Atualiza o título e itens de um checklist (Cria nova versão se já houver execuções)
  *     tags: [Checklists]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
- *       - in: header
- *         name: x-setor-usuario
- *         required: true
- *         schema:
- *           type: string
  *     requestBody:
  *       required: true
  *       content:
@@ -166,8 +120,8 @@ router.get('/checklists/:id', checklistController.buscarChecklist);
  *             properties:
  *               titulo:
  *                 type: string
- *               setor:
- *                 type: string
+ *               id_setor:
+ *                 type: integer
  *               itens:
  *                 type: array
  *                 items:
@@ -185,7 +139,7 @@ router.get('/checklists/:id', checklistController.buscarChecklist);
  *       200:
  *         description: Checklist atualizado com sucesso.
  */
-router.put('/checklists/:id', checkAdmin, checklistController.atualizarChecklist);
+router.put('/checklists/:id', verificarToken(['admin']), checklistController.atualizarChecklist);
 
 /**
  * @swagger
@@ -193,22 +147,19 @@ router.put('/checklists/:id', checkAdmin, checklistController.atualizarChecklist
  *   delete:
  *     summary: Inativa um checklist (Exclusão Lógica)
  *     tags: [Checklists]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
- *       - in: header
- *         name: x-setor-usuario
- *         required: true
- *         schema:
- *           type: string
  *     responses:
  *       200:
  *         description: Checklist inativado com sucesso.
  */
-router.delete('/checklists/:id', checkAdmin, checklistController.excluirChecklist);
+router.delete('/checklists/:id', verificarToken(['admin']), checklistController.excluirChecklist);
 
 /**
  * @swagger
@@ -252,21 +203,18 @@ router.post(
  *   get:
  *     summary: Retorna o histórico completo de versões de um checklist
  *     tags: [Checklists]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
- *       - in: header
- *         name: x-setor-usuario
- *         required: true
- *         schema:
- *           type: string
  *     responses:
  *       200:
  *         description: Histórico de versões retornado com sucesso.
  */
-router.get('/checklists/:id/versoes', checkAdmin, checklistController.listarVersoesChecklist);
+router.get('/checklists/:id/versoes', verificarToken(['admin']), checklistController.listarVersoesChecklist);
 
 module.exports = router;

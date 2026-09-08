@@ -1,14 +1,16 @@
 const pool = require('../config/db');
 
-const criarChecklistComItens = async (titulo, setor, itens) => {
+// Atualizado para receber idSetor
+const criarChecklistComItens = async (titulo, idSetor, itens) => {
   const client = await pool.connect();
 
   try {
     await client.query('BEGIN');
 
+    // Substituindo setor por id_setor
     const resChecklist = await client.query(
-      'INSERT INTO checklist (titulo, setor) VALUES ($1, $2) RETURNING id_checklist, titulo, setor, ativo, data_criacao',
-      [titulo, setor]
+      'INSERT INTO checklist (titulo, id_setor) VALUES ($1, $2) RETURNING id_checklist, titulo, id_setor, ativo, data_criacao',
+      [titulo, idSetor]
     );
     const novoChecklist = resChecklist.rows[0];
 
@@ -33,30 +35,46 @@ const criarChecklistComItens = async (titulo, setor, itens) => {
   }
 };
 
-const listarChecklists = async (setorFiltro, page = 1, limit = 10) => {
+// Adicionado JOIN com a tabela setor para retornar o nome_setor
+const listarChecklists = async (idSetorFiltro, page = 1, limit = 10, setoresUsuario = []) => {
   const offset = (page - 1) * limit;
-  let query = 'SELECT id_checklist, titulo, setor, ativo, data_criacao FROM checklist WHERE ativo = true';
+  let query = `
+    SELECT c.id_checklist, c.titulo, c.id_setor, s.nome AS nome_setor, c.ativo, c.data_criacao 
+    FROM checklist c
+    LEFT JOIN setor s ON c.id_setor = s.id_setor
+    WHERE c.ativo = true
+  `;
   const values = [];
   
-  if (setorFiltro) {
-    values.push(setorFiltro);
-    query += ` AND setor = $${values.length}`;
+  // Se o frontend pediu um setor específico no select
+  if (idSetorFiltro) {
+    values.push(idSetorFiltro);
+    query += ` AND c.id_setor = $${values.length}`;
+  } 
+  // Senão, lista todos que o usuário tem acesso hierárquico
+  else if (setoresUsuario && setoresUsuario.length > 0) {
+    values.push(setoresUsuario);
+    query += ` AND c.id_setor = ANY($${values.length}::int[])`;
   }
 
   const countResult = await pool.query(`SELECT COUNT(*) FROM (${query}) as total`, values);
   const totalItems = parseInt(countResult.rows[0].count, 10);
 
   values.push(limit, offset);
-  query += ` ORDER BY id_checklist DESC LIMIT $${values.length - 1} OFFSET $${values.length}`;
+  query += ` ORDER BY c.id_checklist DESC LIMIT $${values.length - 1} OFFSET $${values.length}`;
   
   const { rows } = await pool.query(query, values);
   
   return { totalItems, totalPages: Math.ceil(totalItems / limit), currentPage: page, data: rows };
 };
 
+// Adicionado JOIN para resgatar os dados do setor junto ao checklist
 const buscarChecklistPorId = async (idChecklist) => {
   const resChecklist = await pool.query(
-    'SELECT * FROM checklist WHERE id_checklist = $1',
+    `SELECT c.*, s.nome AS nome_setor 
+     FROM checklist c
+     LEFT JOIN setor s ON c.id_setor = s.id_setor
+     WHERE c.id_checklist = $1`,
     [idChecklist]
   );
   
@@ -81,12 +99,14 @@ const buscarChecklistPorId = async (idChecklist) => {
   };
 };
 
-const editarChecklistComVersionamento = async (idChecklist, titulo, setor, itens, idUsuario) => {
+// Atualizado para usar idSetor
+const editarChecklistComVersionamento = async (idChecklist, titulo, idSetor, itens, idUsuario) => {
   const client = await pool.connect();
 
   try {
     await client.query('BEGIN'); 
 
+    // Verifica se já existe execução vinculada a este checklist[cite: 1]
     const resUso = await client.query('SELECT 1 FROM execucao WHERE id_checklist = $1 LIMIT 1', [idChecklist]);
     const emUso = resUso.rowCount > 0;
 
@@ -103,9 +123,10 @@ const editarChecklistComVersionamento = async (idChecklist, titulo, setor, itens
       const origem = dadosAntigos.id_checklist_origem || idChecklist;
       const novaVersao = (dadosAntigos.versao || 1) + 1;
 
+      // Usando id_setor no INSERT
       const resNovo = await client.query(
-        'INSERT INTO checklist (titulo, setor, versao, id_checklist_origem) VALUES ($1, $2, $3, $4) RETURNING *',
-        [titulo, setor, novaVersao, origem]
+        'INSERT INTO checklist (titulo, id_setor, versao, id_checklist_origem) VALUES ($1, $2, $3, $4) RETURNING *',
+        [titulo, idSetor, novaVersao, origem]
       );
       
       const dadosNovos = resNovo.rows[0];
@@ -117,14 +138,14 @@ const editarChecklistComVersionamento = async (idChecklist, titulo, setor, itens
         [idUsuario, idFinal, JSON.stringify(dadosAntigos), JSON.stringify(dadosNovos)]
       );
     } else {
-      await client.query('UPDATE checklist SET titulo = $1, setor = $2 WHERE id_checklist = $3', [titulo, setor, idChecklist]);
+      // Usando id_setor no UPDATE
+      await client.query('UPDATE checklist SET titulo = $1, id_setor = $2 WHERE id_checklist = $3', [titulo, idSetor, idChecklist]);
       await client.query('DELETE FROM item WHERE id_checklist = $1', [idChecklist]);
     }
 
     const novosItensCriados = [];
 
     for (const item of itens) {
-      // Captura a imagem se o front enviar (imagem_url ou imagem_referencia)
       const imagemUrl = item.imagem_url || item.imagem_referencia || null;
 
       const resItem = await client.query(
@@ -136,7 +157,6 @@ const editarChecklistComVersionamento = async (idChecklist, titulo, setor, itens
 
     await client.query('COMMIT'); 
     
-    // Agora retornamos o ID final E a lista de itens com os novos IDs gerados
     return { id_checklist: idFinal, itens: novosItensCriados };
 
   } catch (error) {
@@ -146,6 +166,7 @@ const editarChecklistComVersionamento = async (idChecklist, titulo, setor, itens
     client.release();
   }
 };
+
 const inativarChecklist = async (idChecklist) => {
   const { rows } = await pool.query(
     'UPDATE checklist SET ativo = false WHERE id_checklist = $1 RETURNING *',
@@ -162,8 +183,8 @@ const anexarReferenciaNoItem = async (idItem, caminhoImagem) => {
   return rowCount > 0;
 };
 
+// Adicionado JOIN para recuperar os nomes dos setores no histórico
 const buscarHistoricoVersoes = async (idChecklist) => {
-  // 1. Descobre a raiz da árvore do checklist
   const { rows: [base] } = await pool.query(
     'SELECT id_checklist, id_checklist_origem FROM checklist WHERE id_checklist = $1',
     [idChecklist]
@@ -171,19 +192,17 @@ const buscarHistoricoVersoes = async (idChecklist) => {
   
   if (!base) return null;
 
-  // Se ele já for um clone/filho, a raiz é a origem; se for o primeiro, a raiz é ele mesmo
   const idOrigem = base.id_checklist_origem || base.id_checklist;
 
-  // 2. Busca todas as versões (raiz + clones) da mais recente para a mais antiga
   const resChecklists = await pool.query(
-    `SELECT id_checklist, titulo, setor, ativo, data_criacao, versao, id_checklist_origem 
-     FROM checklist 
-     WHERE id_checklist = $1 OR id_checklist_origem = $1 
-     ORDER BY id_checklist DESC`,
+    `SELECT c.id_checklist, c.titulo, c.id_setor, s.nome AS nome_setor, c.ativo, c.data_criacao, c.versao, c.id_checklist_origem 
+     FROM checklist c
+     LEFT JOIN setor s ON c.id_setor = s.id_setor
+     WHERE c.id_checklist = $1 OR c.id_checklist_origem = $1 
+     ORDER BY c.id_checklist DESC`,
     [idOrigem]
   );
 
-  // 3. Agrega os itens de cada versão para preencher o modal de detalhes no front
   const historicoCompleto = [];
   
   for (const chk of resChecklists.rows) {

@@ -24,8 +24,11 @@ const verificarToken = require('../middlewares/authMiddleware');
  *                 type: string
  *               senha:
  *                 type: string
- *               setor:
- *                 type: string
+ *               setores:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *                 description: Array com os IDs dos setores
  *     responses:
  *       201:
  *         description: Usuário cadastrado com sucesso.
@@ -171,5 +174,39 @@ router.put('/usuarios/:id/senha-obrigatoria', verificarToken(), userController.t
  *         description: Status do usuário alterado com sucesso.
  */
 router.put('/usuarios/:id/status', verificarToken(['admin']), userController.alternarStatus);
+
+/**
+ * @swagger
+ * /usuarios/{id}/setores:
+ *   put:
+ *     summary: Atualiza os setores vinculados a um usuário (Apenas Admin)
+ *     tags: [Usuários]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               setores:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *                 description: Array com os novos IDs dos setores
+ *             example:
+ *               setores: [1, 3]
+ *     responses:
+ *       200:
+ *         description: Setores atualizados com sucesso.
+ */
+router.put('/usuarios/:id/setores', verificarToken(['admin']), userController.atualizarSetoresUsuario);
 
 module.exports = router;

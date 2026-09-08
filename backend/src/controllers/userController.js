@@ -3,34 +3,29 @@ const userModel = require('../models/userModel');
 const asyncHandler = require('../middlewares/asyncHandler');
 
 const cadastrarUsuario = asyncHandler(async (req, res) => {
-  const { nome, email, senha, setor } = req.body;
+  // Agora 'setores' deve ser um array de IDs enviado pelo frontend
+  const { nome, email, senha, setores } = req.body;
 
-  if (!nome || !email || !senha || !setor) {
+  if (!nome || !email || !senha || !Array.isArray(setores) || setores.length === 0) {
     return res.status(400).json({
       success: false,
-      error: 'Os campos nome, email, senha e setor são obrigatórios.',
+      error: 'Os campos nome, email, senha e ao menos um setor são obrigatórios.',
     });
   }
 
   const usuarioExistente = await userModel.findByNome(nome);
   if (usuarioExistente) {
-    return res.status(409).json({
-      success: false,
-      error: 'Este nome de usuário já está cadastrado.',
-    });
+    return res.status(409).json({ success: false, error: 'Este nome de usuário já está cadastrado.' });
   }
 
   const saltRounds = 10;
   const senhaHash = await bcrypt.hash(senha, saltRounds);
 
-  const novoUsuario = await userModel.criarUsuario(nome, email, senhaHash, setor);
+  const novoUsuario = await userModel.criarUsuario(nome, email, senhaHash, setores);
 
   return res.status(201).json({
     success: true,
-    data: {
-      mensagem: 'Usuário cadastrado com sucesso!',
-      usuario: novoUsuario,
-    },
+    data: { mensagem: 'Usuário cadastrado com sucesso!', usuario: novoUsuario },
   });
 });
 
@@ -201,6 +196,32 @@ const alternarStatus = asyncHandler(async (req, res) => {
   });
 });
 
+const atualizarSetoresUsuario = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { setores } = req.body;
+
+  if (!Array.isArray(setores)) {
+    return res.status(400).json({
+      success: false,
+      error: 'O campo setores é obrigatório e deve ser um array de IDs.',
+    });
+  }
+
+  const usuarioExistente = await userModel.findById(id);
+  if (!usuarioExistente) {
+    return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
+  }
+
+  await userModel.atualizarSetores(id, setores);
+
+  return res.status(200).json({
+    success: true,
+    data: {
+      mensagem: 'Setores do usuário atualizados com sucesso!',
+    },
+  });
+});
+
 module.exports = {
   cadastrarUsuario,
   getUsuarios,
@@ -208,4 +229,5 @@ module.exports = {
   trocarSenhaObrigatoria,
   alterarMinhaSenha,
   alternarStatus, // Exportação adicionada
+  atualizarSetoresUsuario,
 };

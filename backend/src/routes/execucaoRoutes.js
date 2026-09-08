@@ -1,10 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const execucaoController = require('../controllers/execucaoController');
-
-// Correção: Importação unificada e correta dos middlewares de autenticação e upload
-const  verificarToken  = require('../middlewares/authMiddleware');
-const  checkAdmin  = require('../middlewares/authMiddleware');
+const verificarToken = require('../middlewares/authMiddleware');
 const { uploadMemoria, otimizarImagem } = require('../middlewares/uploadMiddleware');
 
 /**
@@ -48,26 +45,6 @@ const { uploadMemoria, otimizarImagem } = require('../middlewares/uploadMiddlewa
  *     responses:
  *       201:
  *         description: Respostas salvas com sucesso.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   type: object
- *                   properties:
- *                     id_execucao:
- *                       type: integer
- *                     possui_nc:
- *                       type: boolean
- *                       description: Flag booleana indicando se houve alguma Não Conformidade
- *                     status_nc:
- *                       type: string
- *                       description: Status interno da NC (PENDENTE, SEM_NC)
- *                     mensagem:
- *                       type: string
  */
 router.post('/execucoes', verificarToken(), execucaoController.registrarExecucao);
 
@@ -175,43 +152,16 @@ router.post(
  *     tags: [Execuções]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: header
- *         name: x-setor-usuario
- *         required: true
- *         schema:
- *           type: string
- *         description: Setor do usuário logado (deve ser admin)
  *     responses:
  *       200:
  *         description: Lista de pendências retornada com sucesso.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id_execucao:
- *                         type: integer
- *                       data_execucao:
- *                         type: string
- *                         format: date-time
- *                       checklist_titulo:
- *                         type: string
- *                       operador:
- *                         type: string
  *       401:
  *         description: Não autorizado. Token ausente ou inválido.
  *       403:
  *         description: Acesso negado. Requer privilégios de administrador.
  */
 router.get('/execucoes/pendencias/ncs', verificarToken(['admin']), execucaoController.listarPendencias);
+
 /**
  * @swagger
  * /execucoes/{id}/resolver-nc:
@@ -228,12 +178,6 @@ router.get('/execucoes/pendencias/ncs', verificarToken(['admin']), execucaoContr
  *         description: ID da Execução que possui a NC pendente.
  *         schema:
  *           type: integer
- *       - in: header
- *         name: x-setor-usuario
- *         required: true
- *         schema:
- *           type: string
- *         description: Setor do usuário logado (deve ser admin)
  *     requestBody:
  *       required: true
  *       content:

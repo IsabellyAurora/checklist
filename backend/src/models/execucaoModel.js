@@ -1,12 +1,10 @@
 const pool = require('../config/db');
 
-// 1. Recebe os novos parâmetros na assinatura da função
 const salvarExecucao = async (idChecklist, idUsuario, respostas, status_nc = 'SEM_NC', dataInicio, dataConclusao, ordemServico) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    // 2. Adiciona as colunas no INSERT
     const resExecucao = await client.query(
       `INSERT INTO execucao (id_checklist, id_usuario, status_nc, data_inicio, data_conclusao, ordem_servico) 
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING id_execucao`,
@@ -38,6 +36,7 @@ const salvarExecucao = async (idChecklist, idUsuario, respostas, status_nc = 'SE
   }
 };
 
+// Adicionado JOIN para buscar s.nome AS checklist_setor
 const listarExecucoes = async (page = 1, limit = 10, filtros = {}) => {
   const offset = (page - 1) * limit;
   const values = [];
@@ -51,6 +50,17 @@ const listarExecucoes = async (page = 1, limit = 10, filtros = {}) => {
   if (filtros.data_inicio && filtros.data_fim) {
     values.push(filtros.data_inicio, filtros.data_fim);
     whereConditions.push(`e.data_conclusao BETWEEN $${values.length - 1} AND $${values.length}`);
+  }
+
+// Filtragem dinâmica por array de setores do usuário
+  if (filtros.setoresUsuario && filtros.setoresUsuario.length > 0) {
+    // Tenta converter os valores para números inteiros, descartando o que for texto (como "admin")
+    const setoresIds = filtros.setoresUsuario.map(s => parseInt(s, 10)).filter(id => !isNaN(id));
+    
+    if (setoresIds.length > 0) {
+      values.push(setoresIds);
+      whereConditions.push(`c.id_setor = ANY($${values.length}::int[])`);
+    }
   }
 
   const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
@@ -67,10 +77,11 @@ const listarExecucoes = async (page = 1, limit = 10, filtros = {}) => {
     SELECT 
       e.id_execucao, e.status, e.data_inicio, e.data_conclusao, e.ordem_servico,
       EXTRACT(EPOCH FROM (e.data_conclusao - e.data_inicio))::INTEGER AS tempo_execucao_segundos,
-      c.titulo AS checklist_titulo, c.setor,
+      c.titulo AS checklist_titulo, s.nome AS checklist_setor,
       u.nome AS usuario_nome
     FROM execucao e
     JOIN checklist c ON e.id_checklist = c.id_checklist
+    LEFT JOIN setor s ON c.id_setor = s.id_setor
     JOIN usuario u ON e.id_usuario = u.id_usuario
     ${whereClause}
     ORDER BY e.data_conclusao DESC
@@ -82,14 +93,16 @@ const listarExecucoes = async (page = 1, limit = 10, filtros = {}) => {
   return { totalItems, totalPages: Math.ceil(totalItems / limit), currentPage: page, data: rows };
 };
 
+// Adicionado JOIN para buscar s.nome AS checklist_setor
 const buscarExecucaoPorId = async (idExecucao) => {
   const resExecucao = await pool.query(`
     SELECT 
       e.*, 
       EXTRACT(EPOCH FROM (e.data_conclusao - e.data_inicio))::INTEGER AS tempo_execucao_segundos,
-      c.titulo, c.setor, u.nome AS usuario_nome
+      c.titulo, s.nome AS checklist_setor, u.nome AS usuario_nome
     FROM execucao e
     JOIN checklist c ON e.id_checklist = c.id_checklist
+    LEFT JOIN setor s ON c.id_setor = s.id_setor
     JOIN usuario u ON e.id_usuario = u.id_usuario
     WHERE e.id_execucao = $1
   `, [idExecucao]);
@@ -118,29 +131,36 @@ const anexarEvidenciaNaResposta = async (idResposta, caminhoImagem) => {
   return rowCount > 0;
 };
 
-const listarNCs = async (statusFiltro) => {
+// Adicionado JOIN de forma segura para buscar as pendências
+const listarNCs = async (statusFiltro, setoresUsuario = []) => {
   let query = `
     SELECT 
       e.id_execucao, 
       e.data_inicio AS data_execucao, 
       c.titulo AS checklist_titulo, 
-      c.setor AS checklist_setor,
+      s.nome AS checklist_setor,
       u.nome AS operador,
-      e.status_nc, -- Retornando o status para o front saber qual é qual
+      e.status_nc, 
       e.data_resolucao,
       e.observacao_resolucao
     FROM execucao e
     JOIN checklist c ON e.id_checklist = c.id_checklist
+    LEFT JOIN setor s ON c.id_setor = s.id_setor
     JOIN usuario u ON e.id_usuario = u.id_usuario
-    WHERE e.status_nc != 'SEM_NC' -- Ignora checklists perfeitos (sem erro)
+    WHERE e.status_nc != 'SEM_NC'
   `;
   
   const values = [];
 
-  // Se o frontend mandar um status específico (PENDENTE ou RESOLVIDO), filtramos:
   if (statusFiltro) {
     values.push(statusFiltro.toUpperCase());
-    query += ` AND e.status_nc = $1`;
+    query += ` AND e.status_nc = $${values.length}`;
+  }
+
+  // Opcional: Filtra apenas pendências dos setores em que o Admin atua
+  if (setoresUsuario && setoresUsuario.length > 0) {
+    values.push(setoresUsuario);
+    query += ` AND c.id_setor = ANY($${values.length}::int[])`;
   }
 
   query += ` ORDER BY e.data_inicio DESC`;
