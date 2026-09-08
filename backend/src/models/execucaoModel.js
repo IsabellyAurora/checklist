@@ -135,7 +135,8 @@ const anexarEvidenciaNaResposta = async (idResposta, caminhoImagem) => {
 const listarNCs = async (statusFiltro, setoresUsuario = []) => {
   let query = `
     SELECT 
-      e.id_execucao, 
+      e.id_execucao,
+      e.ordem_servico,
       e.data_inicio AS data_execucao, 
       c.titulo AS checklist_titulo, 
       s.nome AS checklist_setor,

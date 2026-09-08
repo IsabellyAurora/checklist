@@ -1,29 +1,26 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import fs from 'fs' // 1. IMPORTANTE: Adicionado para ler os certificados
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      // Atualiza automaticamente o app no celular do manutentor quando você lança versão nova
       registerType: 'autoUpdate', 
-      
-      // Apenas o essencial para Android/Chrome
       includeAssets: ['favicon.ico', 'logo.svg'], 
-      
       manifest: {
         name: 'Sistema de Manutenção e Checklists',
         short_name: 'ChecklistApp',
         description: 'Aplicativo para preenchimento de checklists',
         theme_color: '#0284c7', 
         background_color: '#ffffff',
-        display: 'standalone', // Faz abrir em tela cheia (estilo aplicativo)
+        display: 'standalone', 
         icons: [
           {
-            src: 'logo.svg', // O seu arquivo SVG que deve estar na pasta public
-            sizes: 'any',    // O Android entende que o SVG se adapta sozinho
+            src: 'logo.svg', 
+            sizes: 'any',    
             type: 'image/svg+xml'
           }
         ]
@@ -31,16 +28,23 @@ export default defineConfig({
     })
   ],
   server: {
+    host: '0.0.0.0', // 2. ESSENCIAL: Permite que dispositivos na rede local (como o tablet) acessem o frontend
+    
+    https: {         // 3. SSL: Aponta para os certificados que você acabou de gerar
+      key: fs.readFileSync('./192.168.100.209+1-key.pem'),
+      cert: fs.readFileSync('./192.168.100.209+1.pem'),
+    },
+
     proxy: {
-      // Toda requisição que começar com /api será redirecionada para o backend
       '/api': {
-        target: 'http://localhost:3000', // Troque pela porta que o backend estiver rodando
+        target: 'http://localhost:3000', 
         changeOrigin: true,
+        secure: false, // 4. Evita que o Vite bloqueie a requisição entre o Front (HTTPS) e o Back (HTTP)
       },
-      // Proxy para as fotos
       '/uploads': {
-        target: 'http://127.0.0.1:3000', // A mesma porta do seu backend
+        target: 'http://127.0.0.1:3000', 
         changeOrigin: true,
+        secure: false, 
       }
     }
   }
