@@ -218,7 +218,7 @@ export default function PreencherChecklist() {
     return new Blob([byteArray], { type: 'image/jpeg' });
   };
 
-  const handleEnviarChecklist = async (e) => {
+ const handleEnviarChecklist = async (e) => {
     e.preventDefault();
     const dataConclusao = obterDataHoraLocal();
 
@@ -230,11 +230,25 @@ export default function PreencherChecklist() {
       dataInicio: dataInicio,
       dataConclusao: dataConclusao,
       ordem_servico: ordemServico,
-      respostas: Object.entries(respostas).map(([id_item, dados]) => ({
-        id_item: Number(id_item),
-        valor_resposta: dados.valor_resposta,
-        observacao: dados.observacao
-      }))
+      
+      // Enviamos as respostas ajustadas para o backend reconhecer a NC
+      respostas: Object.entries(respostas).map(([id_item, dados]) => {
+        // Encontra o item correspondente para saber o tipo original dele
+        const itemOriginal = checklistAtual.itens.find(i => i.id_item === Number(id_item));
+        
+        // Se o backend espera 'Não' para disparar a NC, convertemos se o usuário escolheu 'Não Conforme'
+        let respostaFormatada = dados.valor_resposta;
+        if (respostaFormatada === 'Não Conforme') {
+          respostaFormatada = 'Não'; 
+        }
+
+        return {
+          id_item: Number(id_item),
+          tipo: itemOriginal?.tipo || 'booleano', // Garante que o tipo vai junto para o controller ler!
+          valor_resposta: respostaFormatada,
+          observacao: dados.observacao
+        };
+      })
     };
 
     try {
@@ -243,9 +257,13 @@ export default function PreencherChecklist() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payloadPrincipal)
       });
+      
+      // ... (o restante do código continua igual)
 
-      if (response.ok) {
+     if (response.ok) {
         const resultadoJson = await response.json();
+        
+        // Pega as respostas salvas para processar as imagens (mantido igual)
         const respostasSalvas = resultadoJson.data?.execucao?.respostas || resultadoJson.data?.respostas || [];
 
         for (const [id_item, dados] of Object.entries(respostas)) {
@@ -266,8 +284,17 @@ export default function PreencherChecklist() {
         }
 
         sessionStorage.removeItem('checklistRascunho'); 
-        mostrarAlerta('sucesso', 'Checklist Concluído!', 'Suas respostas e evidências foram salvas.');
-      } else {
+        
+        // NOVO: Feedback inteligente lendo a flag do Backend
+        const possuiNC = resultadoJson.data?.possui_nc;
+        
+        if (possuiNC) {
+           mostrarAlerta('sucesso', 'Salvo com Ressalvas', 'Checklist enviado! A Não Conformidade foi detectada e encaminhada ao painel do Admin.');
+        } else {
+           mostrarAlerta('sucesso', 'Checklist Concluído!', 'Suas respostas e evidências foram salvas.');
+        }
+        
+      } else  {
         mostrarAlerta('erro', 'Erro ao salvar', 'Ocorreu um erro ao enviar o checklist.');
       }
     } catch (erro) {

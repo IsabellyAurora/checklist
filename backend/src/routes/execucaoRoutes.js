@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const execucaoController = require('../controllers/execucaoController');
-// Importando corretamente os dois middlewares no topo
-const { verificarToken, checkAdmin } = require('../middlewares/authMiddleware');
+
+// Correção: Importação unificada e correta dos middlewares de autenticação e upload
+const  verificarToken  = require('../middlewares/authMiddleware');
+const  checkAdmin  = require('../middlewares/authMiddleware');
 const { uploadMemoria, otimizarImagem } = require('../middlewares/uploadMiddleware');
 
 /**
@@ -209,8 +211,7 @@ router.post(
  *       403:
  *         description: Acesso negado. Requer privilégios de administrador.
  */
-router.get('/execucoes/pendencias/ncs', verificarToken(), checkAdmin, execucaoController.listarPendencias);
-
+router.get('/execucoes/pendencias/ncs', verificarToken(['admin']), execucaoController.listarPendencias);
 /**
  * @swagger
  * /execucoes/{id}/resolver-nc:
@@ -254,6 +255,6 @@ router.get('/execucoes/pendencias/ncs', verificarToken(), checkAdmin, execucaoCo
  *       404:
  *         description: Execução não encontrada ou a Não Conformidade já foi resolvida.
  */
-router.put('/execucoes/:id/resolver-nc', verificarToken(), checkAdmin, execucaoController.resolverPendenciaNC);
+router.put('/execucoes/:id/resolver-nc', verificarToken(['admin']), execucaoController.resolverPendenciaNC);
 
 module.exports = router;

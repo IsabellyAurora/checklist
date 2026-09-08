@@ -1,22 +1,30 @@
 const pool = require('../config/db');
 
-const salvarExecucao = async (idChecklist, idUsuario, respostas, status_nc = 'SEM_NC') => {
+// 1. Recebe os novos parâmetros na assinatura da função
+const salvarExecucao = async (idChecklist, idUsuario, respostas, status_nc = 'SEM_NC', dataInicio, dataConclusao, ordemServico) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
+    // 2. Adiciona as colunas no INSERT
     const resExecucao = await client.query(
-      `INSERT INTO execucao (id_checklist, id_usuario, status_nc) 
-       VALUES ($1, $2, $3) RETURNING id_execucao`,
-      [idChecklist, idUsuario, status_nc]
+      `INSERT INTO execucao (id_checklist, id_usuario, status_nc, data_inicio, data_conclusao, ordem_servico) 
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id_execucao`,
+      [
+        idChecklist, 
+        idUsuario, 
+        status_nc, 
+        dataInicio || null, 
+        dataConclusao || null, 
+        ordemServico || null
+      ]
     );
     const idExecucao = resExecucao.rows[0].id_execucao;
 
-    // ... (o loop de inserção das respostas no banco continua exatamente igual) ...
     for (const resp of respostas) {
       await client.query(
-        'INSERT INTO resposta (id_execucao, id_item, valor_texto, id_opcao) VALUES ($1, $2, $3, $4)',
-        [idExecucao, resp.id_item, resp.valor_texto, resp.id_opcao || null]
+        'INSERT INTO resposta (id_execucao, id_item, valor_resposta, observacao) VALUES ($1, $2, $3, $4)',
+        [idExecucao, resp.id_item, resp.valor_resposta || null, resp.observacao || null]
       );
     }
 
@@ -110,16 +118,34 @@ const anexarEvidenciaNaResposta = async (idResposta, caminhoImagem) => {
   return rowCount > 0;
 };
 
-const listarNCPendentes = async () => {
-  const query = `
-    SELECT e.id_execucao, e.data_execucao, c.titulo AS checklist_titulo, u.nome AS operador
+const listarNCs = async (statusFiltro) => {
+  let query = `
+    SELECT 
+      e.id_execucao, 
+      e.data_inicio AS data_execucao, 
+      c.titulo AS checklist_titulo, 
+      c.setor AS checklist_setor,
+      u.nome AS operador,
+      e.status_nc, -- Retornando o status para o front saber qual é qual
+      e.data_resolucao,
+      e.observacao_resolucao
     FROM execucao e
     JOIN checklist c ON e.id_checklist = c.id_checklist
     JOIN usuario u ON e.id_usuario = u.id_usuario
-    WHERE e.status_nc = 'PENDENTE'
-    ORDER BY e.data_execucao DESC
+    WHERE e.status_nc != 'SEM_NC' -- Ignora checklists perfeitos (sem erro)
   `;
-  const { rows } = await pool.query(query);
+  
+  const values = [];
+
+  // Se o frontend mandar um status específico (PENDENTE ou RESOLVIDO), filtramos:
+  if (statusFiltro) {
+    values.push(statusFiltro.toUpperCase());
+    query += ` AND e.status_nc = $1`;
+  }
+
+  query += ` ORDER BY e.data_inicio DESC`;
+  
+  const { rows } = await pool.query(query, values);
   return rows;
 };
 
@@ -138,10 +164,10 @@ const resolverNC = async (idExecucao, idAdmin, observacao) => {
 };
 
 module.exports = {
-  salvarExecucaoCompleta,
+  salvarExecucao,
   listarExecucoes,
   buscarExecucaoPorId,
   anexarEvidenciaNaResposta,
   resolverNC,
-  listarNCPendentes,
+  listarNCs,
 };

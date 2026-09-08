@@ -15,9 +15,17 @@ const verificarToken = (rolesPermitidas = []) => {
       const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
       req.usuario = decoded; // Fica disponível como req.usuario.id_usuario e req.usuario.setor
 
-      // Bloqueia se a rota exigir setor específico e o usuário não for autorizado
-      if (rolesPermitidas.length > 0 && !rolesPermitidas.includes(req.usuario.setor)) {
-        return res.status(403).json({ success: false, error: 'Acesso negado para este setor.' });
+      // ⚠️ CORREÇÃO: Transformamos tudo em minúsculo para comparar sem erros
+      if (rolesPermitidas.length > 0) {
+        // Pega o setor do usuário e converte para minúsculo
+        const setorUsuario = (req.usuario.setor || '').trim().toLowerCase();
+        
+        // Converte as permissões exigidas pela rota para minúsculo também
+        const roles = rolesPermitidas.map(role => role.trim().toLowerCase());
+
+        if (!roles.includes(setorUsuario)) {
+          return res.status(403).json({ success: false, error: 'Acesso negado para este setor.' });
+        }
       }
 
       next();
