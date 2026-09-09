@@ -8,13 +8,8 @@ export default function GerenciarUsuarios() {
   const [usuarios, setUsuarios] = useState([]);
   const [setoresDisponiveis, setSetoresDisponiveis] = useState([]);
   
-  // Estado para a barra de pesquisa da TABELA principal
   const [buscaSetor, setBuscaSetor] = useState('');
-  
-  // Estado para a barra de pesquisa DENTRO DO MODAL de setores
   const [buscaSetorModal, setBuscaSetorModal] = useState('');
-  
-  // NOVO: Estado para controlar a expansão da sanfona no Modal
   const [gruposExpandidos, setGruposExpandidos] = useState({});
   
   const [alerta, setAlerta] = useState({ visivel: false, tipo: '', titulo: '', mensagem: '' });
@@ -43,7 +38,7 @@ export default function GerenciarUsuarios() {
   }, []);
 
   // ==========================================
-  // LÓGICA DE SETORES (PAI > FILHO)
+  // LÓGICA BLINDADA: SETOR PAI > FILHO
   // ==========================================
   const construirNomeSetor = (setorAtual, todosSetores) => {
     if (!setorAtual.id_setor_pai || String(setorAtual.id_setor_pai) === '0') {
@@ -108,12 +103,10 @@ export default function GerenciarUsuarios() {
     return setoresString.includes(buscaSetor.toLowerCase());
   });
 
-  // Filtrando a lista de checkboxes dentro do modal de edição
   const setoresFiltradosModal = setoresDisponiveis.filter((setor) => {
     return setor.nomeExibicao.toLowerCase().includes(buscaSetorModal.toLowerCase());
   });
 
-  // Agrupa os setores filtrados por Setor Pai para a Sanfona do Modal
   const setoresAgrupadosModal = setoresFiltradosModal.reduce((acc, setor) => {
     const partes = setor.nomeExibicao.split(' > ');
     const pai = partes[0];
@@ -202,7 +195,7 @@ export default function GerenciarUsuarios() {
     }
 
     setBuscaSetorModal(''); 
-    setGruposExpandidos({}); // Reseta as sanfonas
+    setGruposExpandidos({}); 
     setModalSetores({
       visivel: true,
       id_usuario: user.id_usuario,
@@ -374,7 +367,7 @@ export default function GerenciarUsuarios() {
       </div>
 
       {/* ========================================================= */}
-      {/* MODAL PARA EDITAR SETORES DO USUÁRIO (AGORA COM SANFONA) */}
+      {/* MODAL PARA EDITAR SETORES DO USUÁRIO (COM FONTE PADRONIZADA) */}
       {/* ========================================================= */}
       {modalSetores.visivel && (
         <div className="modal-overlay">
@@ -390,8 +383,9 @@ export default function GerenciarUsuarios() {
               value={buscaSetorModal}
               onChange={(e) => setBuscaSetorModal(e.target.value)}
               style={{ 
-                width: '100%', padding: '10px 12px', borderRadius: '6px', 
-                border: '1px solid #cbd5e1', fontSize: '0.95rem', marginBottom: '10px', boxSizing: 'border-box'
+                width: '100%', padding: '8px 12px', borderRadius: '6px', 
+                border: '1px solid #cbd5e1', fontSize: '0.85rem', /* FONTE AJUSTADA */
+                marginBottom: '10px', boxSizing: 'border-box'
               }}
             />
             
@@ -399,7 +393,7 @@ export default function GerenciarUsuarios() {
               display: 'flex', flexDirection: 'column', gap: '10px', padding: '10px', 
               border: '1px solid #cbd5e1', borderRadius: '6px', background: '#f8fafc', 
               maxHeight: '280px', overflowY: 'auto', marginBottom: '20px', flexShrink: 0,
-              WebkitOverflowScrolling: 'touch' 
+              WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain'
             }}>
               {Object.keys(setoresAgrupadosModal).length > 0 ? (
                 Object.entries(setoresAgrupadosModal).map(([nomePai, listaSetores]) => {
@@ -413,24 +407,24 @@ export default function GerenciarUsuarios() {
                       {/* PAI */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '8px 12px' }}>
                         {pai ? (
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold', color: '#334155', flex: 1 }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold', color: '#334155', fontSize: '0.85rem', flex: 1, margin: 0 }}> {/* FONTE AJUSTADA */}
                             <input
                               type="checkbox"
                               checked={modalSetores.setoresSelecionados.includes(Number(pai.id_setor))}
                               onChange={() => handleCheckboxSetorChange(pai.id_setor)}
-                              style={{ width: '18px', height: '18px', cursor: 'pointer', flexShrink: 0 }}
+                              style={{ width: '15px', height: '15px', cursor: 'pointer', flexShrink: 0, margin: 0 }}
                             />
                             {pai.nomeExibicao}
                           </label>
                         ) : (
-                          <span style={{ fontWeight: 'bold', color: '#334155', flex: 1 }}>{nomePai} (Subsetores)</span>
+                          <span style={{ fontWeight: 'bold', color: '#334155', fontSize: '0.85rem', flex: 1 }}>{nomePai} (Subsetores)</span> /* FONTE AJUSTADA */
                         )}
 
                         {filhos.length > 0 && (
                           <button 
                             type="button"
                             onClick={() => toggleGrupo(nomePai)}
-                            style={{ background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.8rem', color: '#0284c7', fontWeight: 'bold' }}
+                            style={{ background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.75rem', color: '#0284c7', fontWeight: 'bold' }} /* FONTE AJUSTADA */
                           >
                             {isExpandido ? '▲ Ocultar' : '▼ Ver subsetores'}
                           </button>
@@ -441,12 +435,12 @@ export default function GerenciarUsuarios() {
                       {isExpandido && filhos.length > 0 && (
                         <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid #cbd5e1' }}>
                           {filhos.map(filho => (
-                            <label key={filho.id_setor} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'normal', color: '#555', paddingLeft: '24px' }}>
+                            <label key={filho.id_setor} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'normal', color: '#555', paddingLeft: '24px', fontSize: '0.85rem', margin: 0 }}> {/* FONTE AJUSTADA */}
                               <input
                                 type="checkbox"
                                 checked={modalSetores.setoresSelecionados.includes(Number(filho.id_setor))}
                                 onChange={() => handleCheckboxSetorChange(filho.id_setor)}
-                                style={{ width: '18px', height: '18px', cursor: 'pointer', flexShrink: 0 }}
+                                style={{ width: '15px', height: '15px', cursor: 'pointer', flexShrink: 0, margin: 0 }}
                               />
                               {filho.nomeExibicao.replace(`${nomePai} > `, '↳ ')} 
                             </label>
@@ -457,7 +451,7 @@ export default function GerenciarUsuarios() {
                   );
                 })
               ) : (
-                <span style={{ color: '#64748b', fontSize: '0.9rem', textAlign: 'center', padding: '10px 0' }}>
+                <span style={{ color: '#64748b', fontSize: '0.85rem', textAlign: 'center', padding: '10px 0' }}>
                   Nenhum setor encontrado com esse nome.
                 </span>
               )}

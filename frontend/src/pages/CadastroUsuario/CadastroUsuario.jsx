@@ -14,6 +14,10 @@ export default function CadastroUsuario() {
   const [buscaSetor, setBuscaSetor] = useState('');
   const [gruposExpandidos, setGruposExpandidos] = useState({});
   
+  // Estados para a sanfona de dentro do Modal de Criar/Editar Setor
+  const [buscaSetorPai, setBuscaSetorPai] = useState('');
+  const [gruposExpandidosPai, setGruposExpandidosPai] = useState({});
+
   const [alerta, setAlerta] = useState({ visivel: false, tipo: '', titulo: '', mensagem: '' });
   const [modalSetor, setModalSetor] = useState({ visivel: false, isEdicao: false, id_setor: null, nome: '', id_setor_pai: '' });
 
@@ -60,6 +64,9 @@ export default function CadastroUsuario() {
     }
   };
 
+  // ==========================================
+  // AGRUPAMENTO PARA A TELA PRINCIPAL (CHECKBOXES)
+  // ==========================================
   const setoresFiltrados = setoresDisponiveis.filter(setor => 
     setor.nomeExibicao.toLowerCase().includes(buscaSetor.toLowerCase())
   );
@@ -73,12 +80,31 @@ export default function CadastroUsuario() {
   }, {});
 
   const toggleGrupo = (nomePai) => {
-    setGruposExpandidos(prev => ({
-      ...prev,
-      [nomePai]: !prev[nomePai]
-    }));
+    setGruposExpandidos(prev => ({ ...prev, [nomePai]: !prev[nomePai] }));
   };
 
+  // ==========================================
+  // AGRUPAMENTO PARA O MODAL DE SETOR (RADIO BUTTONS)
+  // ==========================================
+  const setoresFiltradosPai = setoresDisponiveis
+    .filter(s => String(s.id_setor) !== String(modalSetor.id_setor)) // Evita que ele seja pai dele mesmo
+    .filter(setor => setor.nomeExibicao.toLowerCase().includes(buscaSetorPai.toLowerCase()));
+
+  const setoresAgrupadosPai = setoresFiltradosPai.reduce((acc, setor) => {
+    const partes = setor.nomeExibicao.split(' > ');
+    const pai = partes[0];
+    if (!acc[pai]) acc[pai] = [];
+    acc[pai].push(setor);
+    return acc;
+  }, {});
+
+  const toggleGrupoPai = (nomePai) => {
+    setGruposExpandidosPai(prev => ({ ...prev, [nomePai]: !prev[nomePai] }));
+  };
+
+  // ==========================================
+  // UTILITÁRIOS E ALERTAS
+  // ==========================================
   const mostrarAlerta = (tipo, titulo, mensagem) => {
     setAlerta({ visivel: true, tipo, titulo, mensagem });
   };
@@ -111,10 +137,14 @@ export default function CadastroUsuario() {
   // LÓGICA DE CRIAR E EDITAR SETORES
   // ==========================================
   const abrirModalNovoSetor = () => {
+    setBuscaSetorPai('');
+    setGruposExpandidosPai({});
     setModalSetor({ visivel: true, isEdicao: false, id_setor: null, nome: '', id_setor_pai: '' });
   };
 
   const abrirModalEditarSetor = (setor) => {
+    setBuscaSetorPai('');
+    setGruposExpandidosPai({});
     setModalSetor({ visivel: true, isEdicao: true, id_setor: setor.id_setor, nome: setor.nome, id_setor_pai: setor.id_setor_pai || '' });
   };
 
@@ -205,82 +235,30 @@ export default function CadastroUsuario() {
         <form onSubmit={handleCadastro} className="cadastro-form">
           <div className="input-group">
             <label htmlFor="nome">Nome</label>
-            <input
-              type="text"
-              id="nome"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              placeholder="Nome do usuário"
-              required
-            />
+            <input type="text" id="nome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome do usuário" required />
           </div>
 
           <div className="input-group">
             <label htmlFor="email">E-mail</label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="email@empresa.com.br"
-              required
-            />
+            <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@empresa.com.br" required />
           </div>
 
           <div className="input-group">
             <label htmlFor="senha">Senha</label>
-            <input
-              type="password"
-              id="senha"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              placeholder="Crie uma senha"
-              required
-            />
+            <input type="password" id="senha" value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="Crie uma senha" required />
           </div>
 
           <div className="input-group">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <label style={{ margin: 0 }}>Setores de Atuação</label>
-              <button 
-                type="button" 
-                onClick={abrirModalNovoSetor}
-                style={{ backgroundColor: '#e2e8f0', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '4px 10px', fontSize: '0.8rem', fontWeight: 'bold', color: '#334155', cursor: 'pointer' }}
-              >
+              <button type="button" onClick={abrirModalNovoSetor} style={{ backgroundColor: '#e2e8f0', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '4px 10px', fontSize: '0.8rem', fontWeight: 'bold', color: '#334155', cursor: 'pointer' }}>
                 ➕ Criar Setor
               </button>
             </div>
 
-            <input
-              type="text"
-              placeholder="🔍 Pesquisar setor..."
-              value={buscaSetor}
-              onChange={(e) => setBuscaSetor(e.target.value)}
-              style={{ 
-                width: '100%', 
-                padding: '8px 12px', 
-                borderRadius: '6px', 
-                border: '1px solid #cbd5e1', 
-                marginBottom: '10px', 
-                fontSize: '0.95rem',
-                boxSizing: 'border-box'
-              }}
-            />
+            <input type="text" placeholder="🔍 Pesquisar setor..." value={buscaSetor} onChange={(e) => setBuscaSetor(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '10px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
 
-            {/* CAIXA DE ROLAGEM CORRIGIDA (flexShrink: 0 nos filhos) */}
-            <div style={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: '10px', 
-              padding: '10px', 
-              border: '1px solid #cbd5e1', 
-              borderRadius: '6px', 
-              background: '#f8fafc', 
-              maxHeight: '350px', 
-              overflowY: 'auto',
-              overscrollBehavior: 'contain',
-              WebkitOverflowScrolling: 'touch' // Habilita rolagem suave no iPhone/iPad
-            }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#f8fafc', maxHeight: '350px', overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
               
               {Object.keys(setoresAgrupados).length > 0 ? (
                 Object.entries(setoresAgrupados).map(([nomePai, listaSetores]) => {
@@ -289,41 +267,23 @@ export default function CadastroUsuario() {
                   const isExpandido = gruposExpandidos[nomePai] || buscaSetor.length > 0;
 
                   return (
-                    // MÁGICA AQUI: flexShrink: 0 impede o Flexbox de esmagar o card, liberando a barra de rolagem!
                     <div key={nomePai} style={{ flexShrink: 0, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', backgroundColor: 'white' }}>
-                      
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '8px 12px' }}>
                         {pai ? (
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold', color: '#334155', flex: 1 }}>
-                            <input
-                              type="checkbox"
-                              checked={setoresSelecionados.includes(pai.id_setor)}
-                              onChange={() => handleCheckboxChange(pai.id_setor)}
-                              style={{ width: '18px', height: '18px', cursor: 'pointer', flexShrink: 0 }}
-                            />
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold', color: '#334155', fontSize: '0.85rem', flex: 1, margin: 0 }}>
+                            <input type="checkbox" checked={setoresSelecionados.includes(pai.id_setor)} onChange={() => handleCheckboxChange(pai.id_setor)} style={{ width: '15px', height: '15px', cursor: 'pointer', flexShrink: 0, margin: 0 }} />
                             {pai.nomeExibicao}
                           </label>
                         ) : (
-                          <span style={{ fontWeight: 'bold', color: '#334155', flex: 1 }}>{nomePai} (Subsetores encontrados)</span>
+                          <span style={{ fontWeight: 'bold', color: '#334155', fontSize: '0.85rem', flex: 1 }}>{nomePai} (Subsetores encontrados)</span>
                         )}
 
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                           {pai && (
-                            <button 
-                              type="button"
-                              onClick={() => abrirModalEditarSetor(pai)}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', opacity: 0.6 }}
-                              title="Editar setor pai"
-                            >
-                              ✏️
-                            </button>
+                            <button type="button" onClick={() => abrirModalEditarSetor(pai)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', opacity: 0.6, padding: 0 }} title="Editar setor pai">✏️</button>
                           )}
                           {filhos.length > 0 && (
-                            <button 
-                              type="button"
-                              onClick={() => toggleGrupo(nomePai)}
-                              style={{ background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.8rem', color: '#0284c7', fontWeight: 'bold', transition: '0.2s' }}
-                            >
+                            <button type="button" onClick={() => toggleGrupo(nomePai)} style={{ background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.75rem', color: '#0284c7', fontWeight: 'bold', transition: '0.2s' }}>
                               {isExpandido ? '▲ Ocultar' : '▼ Ver subsetores'}
                             </button>
                           )}
@@ -334,23 +294,11 @@ export default function CadastroUsuario() {
                         <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid #cbd5e1' }}>
                           {filhos.map(filho => (
                             <div key={filho.id_setor} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: '24px' }}>
-                              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'normal', color: '#555', flex: 1 }}>
-                                <input
-                                  type="checkbox"
-                                  checked={setoresSelecionados.includes(filho.id_setor)}
-                                  onChange={() => handleCheckboxChange(filho.id_setor)}
-                                  style={{ width: '18px', height: '18px', cursor: 'pointer', flexShrink: 0 }}
-                                />
+                              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'normal', color: '#555', fontSize: '0.85rem', flex: 1, margin: 0 }}>
+                                <input type="checkbox" checked={setoresSelecionados.includes(filho.id_setor)} onChange={() => handleCheckboxChange(filho.id_setor)} style={{ width: '15px', height: '15px', cursor: 'pointer', flexShrink: 0, margin: 0 }} />
                                 {filho.nomeExibicao.replace(`${nomePai} > `, '↳ ')} 
                               </label>
-                              <button 
-                                type="button"
-                                onClick={() => abrirModalEditarSetor(filho)}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', opacity: 0.6 }}
-                                title="Editar subsetor"
-                              >
-                                ✏️
-                              </button>
+                              <button type="button" onClick={() => abrirModalEditarSetor(filho)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', opacity: 0.6, padding: 0 }} title="Editar subsetor">✏️</button>
                             </div>
                           ))}
                         </div>
@@ -359,7 +307,7 @@ export default function CadastroUsuario() {
                   );
                 })
               ) : (
-                <span style={{ fontSize: '0.9rem', color: '#888', textAlign: 'center', padding: '10px 0' }}>
+                <span style={{ fontSize: '0.85rem', color: '#888', textAlign: 'center', padding: '10px 0' }}>
                   {setoresDisponiveis.length === 0 ? 'Nenhum setor cadastrado. Crie um acima!' : 'Nenhum setor encontrado para a busca.'}
                 </span>
               )}
@@ -367,19 +315,18 @@ export default function CadastroUsuario() {
           </div>
 
           <div className="botoes-acao">
-            <button type="button" className="btn-voltar" onClick={() => navigate('/home')}>
-              Voltar
-            </button>
-            <button type="submit" className="btn-salvar">
-              Cadastrar Usuário
-            </button>
+            <button type="button" className="btn-voltar" onClick={() => navigate('/home')}>Voltar</button>
+            <button type="submit" className="btn-salvar">Cadastrar Usuário</button>
           </div>
         </form>
       </div>
 
+      {/* ========================================================= */}
+      {/* MODAL PARA CRIAR/EDITAR SETOR (AGORA COM SANFONA) */}
+      {/* ========================================================= */}
       {modalSetor.visivel && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '400px', textAlign: 'left' }}>
+          <div className="modal-content" style={{ maxWidth: '480px', textAlign: 'left' }}>
             <h3 style={{ marginBottom: '15px', color: '#1e293b' }}>
               {modalSetor.isEdicao ? 'Editar Setor' : 'Novo Setor'}
             </h3>
@@ -391,46 +338,87 @@ export default function CadastroUsuario() {
                 value={modalSetor.nome} 
                 onChange={(e) => setModalSetor({ ...modalSetor, nome: e.target.value })}
                 placeholder="Ex: TI, Manutenção..."
-                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
               />
             </div>
 
             <div className="input-group" style={{ marginBottom: '20px' }}>
               <label>Pertence a qual Setor? (Pai)</label>
-              <select 
-                value={modalSetor.id_setor_pai} 
-                onChange={(e) => setModalSetor({ ...modalSetor, id_setor_pai: e.target.value })}
-                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: 'white' }}
-              >
-                <option value="">Nenhum (Setor Principal)</option>
-                {setoresDisponiveis
-                  .filter(s => String(s.id_setor) !== String(modalSetor.id_setor))
-                  .map(s => (
-                    <option key={s.id_setor} value={s.id_setor}>
-                      {s.nomeExibicao}
-                    </option>
-                  ))
-                }
-              </select>
+
+              <input 
+                type="text" 
+                placeholder="🔍 Pesquisar setor pai..." 
+                value={buscaSetorPai} 
+                onChange={(e) => setBuscaSetorPai(e.target.value)}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '10px', fontSize: '0.85rem', boxSizing: 'border-box' }} 
+              />
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#f8fafc', maxHeight: '220px', overflowY: 'auto', flexShrink: 0, WebkitOverflowScrolling: 'touch' }}>
+                
+                {/* SANFONA DOS SETORES EXISTENTES */}
+                {Object.keys(setoresAgrupadosPai).length > 0 ? (
+                  Object.entries(setoresAgrupadosPai).map(([nomePai, listaSetores]) => {
+                    const pai = listaSetores.find(s => s.nomeExibicao === nomePai);
+                    const filhos = listaSetores.filter(s => s.nomeExibicao !== nomePai);
+                    const isExpandido = gruposExpandidosPai[nomePai] || buscaSetorPai.length > 0;
+
+                    return (
+                      <div key={nomePai} style={{ flexShrink: 0, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', backgroundColor: 'white' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '8px 12px' }}>
+                          {pai ? (
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold', color: '#334155', fontSize: '0.85rem', flex: 1, margin: 0 }}>
+                              <input 
+                                type="radio" 
+                                name="setorPaiModal" 
+                                value={pai.id_setor} 
+                                checked={String(modalSetor.id_setor_pai) === String(pai.id_setor)} 
+                                onChange={(e) => setModalSetor({ ...modalSetor, id_setor_pai: e.target.value })} 
+                                style={{ width: '15px', height: '15px', cursor: 'pointer', flexShrink: 0, margin: 0 }} 
+                              />
+                              {pai.nomeExibicao}
+                            </label>
+                          ) : (
+                            <span style={{ fontWeight: 'bold', color: '#334155', fontSize: '0.85rem', flex: 1 }}>{nomePai} (Subsetores)</span>
+                          )}
+
+                          {filhos.length > 0 && (
+                            <button type="button" onClick={() => toggleGrupoPai(nomePai)} style={{ background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.75rem', color: '#0284c7', fontWeight: 'bold' }}>
+                              {isExpandido ? '▲ Ocultar' : '▼ Ver subsetores'}
+                            </button>
+                          )}
+                        </div>
+
+                        {isExpandido && filhos.length > 0 && (
+                          <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid #cbd5e1' }}>
+                            {filhos.map(filho => (
+                              <label key={filho.id_setor} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'normal', color: '#555', paddingLeft: '24px', fontSize: '0.85rem', margin: 0 }}>
+                                <input 
+                                  type="radio" 
+                                  name="setorPaiModal" 
+                                  value={filho.id_setor} 
+                                  checked={String(modalSetor.id_setor_pai) === String(filho.id_setor)} 
+                                  onChange={(e) => setModalSetor({ ...modalSetor, id_setor_pai: e.target.value })} 
+                                  style={{ width: '15px', height: '15px', cursor: 'pointer', flexShrink: 0, margin: 0 }} 
+                                />
+                                {filho.nomeExibicao.replace(`${nomePai} > `, '↳ ')} 
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <span style={{ fontSize: '0.85rem', color: '#888', textAlign: 'center', padding: '10px 0' }}>
+                    Nenhum setor encontrado.
+                  </span>
+                )}
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button 
-                type="button"
-                className="btn-voltar" 
-                style={{ flex: 1, padding: '10px', margin: 0 }} 
-                onClick={() => setModalSetor({ ...modalSetor, visivel: false })}
-              >
-                Cancelar
-              </button>
-              <button 
-                type="button"
-                className="btn-salvar" 
-                style={{ flex: 1, padding: '10px', margin: 0 }} 
-                onClick={salvarSetor}
-              >
-                Salvar Setor
-              </button>
+              <button type="button" className="btn-voltar" style={{ flex: 1, padding: '10px', margin: 0 }} onClick={() => setModalSetor({ ...modalSetor, visivel: false })}>Cancelar</button>
+              <button type="button" className="btn-salvar" style={{ flex: 1, padding: '10px', margin: 0 }} onClick={salvarSetor}>Salvar Setor</button>
             </div>
           </div>
         </div>
@@ -440,9 +428,7 @@ export default function CadastroUsuario() {
         <div className="modal-overlay">
           <div className="modal-content">
             {alerta.tipo === 'sucesso' ? '✅' : '⚠️'}
-            <h3 className={alerta.tipo === 'erro' ? 'texto-erro' : 'texto-sucesso'}>
-              {alerta.titulo}
-            </h3>
+            <h3 className={alerta.tipo === 'erro' ? 'texto-erro' : 'texto-sucesso'}>{alerta.titulo}</h3>
             <p>{alerta.mensagem}</p>
             <button className="modal-button" onClick={fecharAlerta}>OK</button>
           </div>

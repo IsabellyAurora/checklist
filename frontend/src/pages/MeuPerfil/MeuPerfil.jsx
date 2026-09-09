@@ -8,6 +8,10 @@ export default function MeuPerfil() {
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [usuario, setUsuario] = useState(null);
   const [alerta, setAlerta] = useState({ visivel: false, tipo: '', titulo: '', mensagem: '' });
+  
+  // Estado para salvar a lista de setores traduzidos
+  const [nomesSetores, setNomesSetores] = useState([]);
+  
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -15,6 +19,75 @@ export default function MeuPerfil() {
     if (userData) setUsuario(JSON.parse(userData));
     else navigate('/');
   }, [navigate]);
+
+  useEffect(() => {
+    if (usuario) {
+      carregarSetores();
+    }
+  }, [usuario]);
+
+  // ==========================================
+  // LÓGICA PARA BUSCAR E FORMATAR OS SETORES
+  // ==========================================
+  const construirNomeSetor = (setorAtual, listaCompleta) => {
+    if (!setorAtual.id_setor_pai || String(setorAtual.id_setor_pai) === '0') {
+      return setorAtual.nome; 
+    }
+    const setorPai = listaCompleta.find(s => String(s.id_setor) === String(setorAtual.id_setor_pai));
+    
+    if (setorPai && String(setorPai.id_setor) !== String(setorAtual.id_setor)) {
+      const nomeDoPai = construirNomeSetor(setorPai, listaCompleta);
+      return `${nomeDoPai} > ${setorAtual.nome}`;
+    }
+    return setorAtual.nome;
+  };
+
+  const carregarSetores = async () => {
+    try {
+      let arraySetoresId = [];
+      if (Array.isArray(usuario?.setores)) {
+        arraySetoresId = usuario.setores;
+      } else if (usuario?.setores_ids) {
+        arraySetoresId = usuario.setores_ids;
+      } else if (usuario?.setor) {
+        arraySetoresId = [usuario.setor]; 
+      }
+
+      const arrayNormalizado = arraySetoresId.map(val => String(val).toLowerCase());
+
+      const res = await fetchWithAuth('/api/setores');
+      if (res.ok) {
+        const json = await res.json();
+        const setoresBrutos = json.data || [];
+        
+        const setoresExplicitos = setoresBrutos.filter(s => 
+          arrayNormalizado.includes(String(s.id_setor)) || 
+          arrayNormalizado.includes(String(s.nome).toLowerCase())
+        );
+
+        let idsPermitidos = new Set(setoresExplicitos.map(s => Number(s.id_setor)));
+        let adicionouNovo = true;
+        
+        while(adicionouNovo) {
+          adicionouNovo = false;
+          setoresBrutos.forEach(s => {
+            if (s.id_setor_pai && idsPermitidos.has(Number(s.id_setor_pai)) && !idsPermitidos.has(Number(s.id_setor))) {
+              idsPermitidos.add(Number(s.id_setor));
+              adicionouNovo = true;
+            }
+          });
+        }
+
+        const setoresFinaisDoUsuario = setoresBrutos.filter(s => idsPermitidos.has(Number(s.id_setor)));
+        const setoresTraduzidos = setoresFinaisDoUsuario.map(s => construirNomeSetor(s, setoresBrutos));
+        
+        setoresTraduzidos.sort((a, b) => a.localeCompare(b));
+        setNomesSetores(setoresTraduzidos);
+      }
+    } catch (erro) {
+      console.error("Erro ao carregar setores do perfil", erro);
+    }
+  };
 
   const mostrarAlerta = (tipo, titulo, mensagem) => setAlerta({ visivel: true, tipo, titulo, mensagem });
   const fecharAlerta = () => setAlerta({ ...alerta, visivel: false });
@@ -28,7 +101,6 @@ export default function MeuPerfil() {
     }
 
     try {
-      // 2. Substituído o 'fetch' padrão pelo 'fetchWithAuth'
       const resposta = await fetchWithAuth(`/api/usuarios/${usuario.id_usuario}/senha`, {
         method: 'PUT',
         body: JSON.stringify({ 
@@ -59,7 +131,9 @@ export default function MeuPerfil() {
     <div className="gerenciar-container">
       <div className="gerenciar-card">
         <h2>Meu Perfil</h2>
-        <p>Usuário: <strong>{usuario.nome}</strong> | Setor: <strong>{usuario.setor}</strong></p>
+        
+        {/* EXIBINDO OS SETORES DE FORMA LIMPA COM JOIN(', ') */}
+        <p>Usuário: <strong>{usuario.nome}</strong> | Setor: <strong>{nomesSetores.length > 0 ? nomesSetores.join(', ') : (usuario.setor || 'Buscando...')}</strong></p>
 
         <form onSubmit={handleTrocaVoluntaria} style={{ marginTop: '2rem' }}>
           <div className="input-group">
@@ -96,10 +170,19 @@ export default function MeuPerfil() {
           </div>
 
           <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
-            <button type="button" className="btn-voltar-home" onClick={() => navigate('/home')}>
+            <button 
+              type="button" 
+              className="btn-voltar-home" 
+              onClick={() => navigate('/home')}
+              style={{ flex: 1, margin: 0 }}
+            >
               Voltar
             </button>
-            <button type="submit" className="btn-buscar" style={{ width: '100%' }}>
+            <button 
+              type="submit" 
+              className="btn-buscar" 
+              style={{ flex: 1, margin: 0 }}
+            >
               Atualizar Senha
             </button>
           </div>

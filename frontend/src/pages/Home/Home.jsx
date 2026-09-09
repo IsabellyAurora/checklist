@@ -15,7 +15,6 @@ export default function Home() {
 
   const [nomesSetores, setNomesSetores] = useState([]);
   
-  // NOVO: Estado para controlar a exibição dos subsetores no painel do usuário comum
   const [mostrarSubsetores, setMostrarSubsetores] = useState(false);
 
   const navigate = useNavigate();
@@ -242,7 +241,6 @@ export default function Home() {
           <div className="form-card">
             <h2>Checklist Diário</h2>
             
-            {/* NOVO VISUAL DE SETORES */}
             <div style={{ marginBottom: '1.5rem', backgroundColor: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0', textAlign: 'left' }}>
               <p style={{ margin: '0 0 10px 0', color: '#475569', fontSize: '0.9rem', fontWeight: 'bold' }}>Seus Setores:</p>
               
@@ -267,7 +265,6 @@ export default function Home() {
                 )}
               </div>
 
-              {/* ÁREA EXPANSÍVEL DOS SUBSETORES */}
               {mostrarSubsetores && temSubsetores && (
                 <div style={{ marginTop: '15px', paddingTop: '12px', borderTop: '1px dashed #cbd5e1', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {Object.entries(setoresAgrupados).map(([pai, filhos]) => {
@@ -357,7 +354,9 @@ export default function Home() {
         </>
       )}
 
-      {/* MODAL DE RESOLUÇÃO */}
+      {/* ========================================================= */}
+      {/* MODAL DE RESOLUÇÃO PADRONIZADO (BOTÕES IGUAIS)            */}
+      {/* ========================================================= */}
       {modalResolver.visivel && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -369,8 +368,19 @@ export default function Home() {
               placeholder="Descreva o que foi feito..."
             />
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button className="secondary-button" style={{ flex: 1 }} onClick={() => setModalResolver({ visivel: false, idExecucao: null })}>Cancelar</button>
-              <button className="primary-button" style={{ flex: 1 }} onClick={confirmarResolucao} disabled={!observacao.trim()}>Salvar</button>
+              <button 
+                style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: 'white', color: '#333', fontWeight: 'bold', cursor: 'pointer', margin: 0 }} 
+                onClick={() => setModalResolver({ visivel: false, idExecucao: null })}
+              >
+                Cancelar
+              </button>
+              <button 
+                style={{ flex: 1, padding: '10px', borderRadius: '6px', border: 'none', backgroundColor: '#F57c00', color: 'white', fontWeight: 'bold', cursor: 'pointer', margin: 0 }} 
+                onClick={confirmarResolucao} 
+                disabled={!observacao.trim()}
+              >
+                Salvar
+              </button>
             </div>
           </div>
         </div>

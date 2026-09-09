@@ -84,25 +84,23 @@ export default function HistoricoNCs() {
   // ==========================================
   // LÓGICA DE NÃO CONFORMIDADES
   // ==========================================
-const carregarTodoOHistoricoNoFrontend = async () => {
+  const carregarTodoOHistoricoNoFrontend = async () => {
     setCarregando(true);
     try {
-      // ⚠️ MUDANÇA AQUI: Batendo direto na rota focada em NCs
       const res = await fetchWithAuth('/api/execucoes/pendencias/ncs');
       
       if (res.ok) {
         const json = await res.json();
         const execucoesNC = json.data || [];
         
-        // O backend já devolve tudo filtrado, basta mapear para o padrão visual do seu state
         const listaNCs = execucoesNC.map(exec => ({
           id_execucao: exec.id_execucao,
           ordem_servico: exec.ordem_servico,
           checklist_titulo: exec.checklist_titulo,
-          id_setor: exec.checklist_setor || exec.id_setor, // Pega o nome vindo do backend
+          id_setor: exec.checklist_setor || exec.id_setor,
           operador: exec.operador,
           data_execucao: exec.data_execucao,
-          status: exec.status_nc, // PENDENTE ou RESOLVIDO
+          status: exec.status_nc, 
           tratativa: exec.observacao_resolucao || 'Nenhuma tratativa registrada.'
         }));
 
@@ -204,7 +202,6 @@ const carregarTodoOHistoricoNoFrontend = async () => {
                         <td>
                           <strong>{nc.checklist_titulo}</strong>
                           <br/>
-                          {/* Nome inteligente do Setor */}
                           <small style={{ color: '#475569' }}>{getNomeSetor(nc.id_setor)}</small>
                         </td>
                         <td>{nc.operador}</td>
@@ -247,7 +244,9 @@ const carregarTodoOHistoricoNoFrontend = async () => {
         <button className="btn-voltar-home" onClick={() => navigate('/home')}>Voltar para Home</button>
       </div>
 
-      {/* MODAIS (MANTIDOS ORIGINAIS) */}
+      {/* ========================================================= */}
+      {/* MODAL DE RESOLUÇÃO (AGORA COM BOTÕES IGUAIS)              */}
+      {/* ========================================================= */}
       {modalResolver.visivel && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -256,10 +255,22 @@ const carregarTodoOHistoricoNoFrontend = async () => {
             <textarea 
               style={{ width: '100%', minHeight: '90px', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '15px', fontFamily: 'inherit', resize: 'none' }}
               value={observacao} onChange={(e) => setObservacao(e.target.value)}
+              placeholder="Descreva o que foi feito..."
             />
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button className="secondary-button" style={{ flex: 1 }} onClick={() => setModalResolver({ visivel: false, idExecucao: null })}>Cancelar</button>
-              <button className="primary-button" style={{ flex: 1 }} onClick={confirmarResolucao} disabled={!observacao.trim()}>Salvar</button>
+              <button 
+                style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: 'white', color: '#333', fontWeight: 'bold', cursor: 'pointer', margin: 0 }} 
+                onClick={() => setModalResolver({ visivel: false, idExecucao: null })}
+              >
+                Cancelar
+              </button>
+              <button 
+                style={{ flex: 1, padding: '10px', borderRadius: '6px', border: 'none', backgroundColor: '#F57c00', color: 'white', fontWeight: 'bold', cursor: 'pointer', margin: 0 }} 
+                onClick={confirmarResolucao} 
+                disabled={!observacao.trim()}
+              >
+                Salvar
+              </button>
             </div>
           </div>
         </div>
