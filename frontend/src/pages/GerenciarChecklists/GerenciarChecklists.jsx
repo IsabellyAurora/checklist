@@ -34,13 +34,21 @@ export default function GerenciarChecklists() {
   }, []);
 
   useEffect(() => {
-    carregarLista();
-  }, [page, setorFiltro]);
+    // Só carrega a lista se os setores já estiverem disponíveis para podermos calcular a cascata
+    if (setoresDisponiveis.length > 0) {
+      carregarLista();
+    }
+  }, [page, setorFiltro, setoresDisponiveis]);
 
+  // ==========================================
+  // LÓGICA BLINDADA: NOME DO SETOR E CASCATA
+  // ==========================================
   const construirNomeSetor = (setorAtual, todosSetores) => {
-    if (!setorAtual.id_setor_pai) return setorAtual.nome; 
-    const setorPai = todosSetores.find(s => s.id_setor === setorAtual.id_setor_pai);
-    if (setorPai) {
+    if (!setorAtual.id_setor_pai || String(setorAtual.id_setor_pai) === '0') return setorAtual.nome; 
+    
+    const setorPai = todosSetores.find(s => String(s.id_setor) === String(setorAtual.id_setor_pai));
+    
+    if (setorPai && String(setorPai.id_setor) !== String(setorAtual.id_setor)) {
       const nomeDoPai = construirNomeSetor(setorPai, todosSetores);
       return `${nomeDoPai} > ${setorAtual.nome}`;
     }
@@ -62,17 +70,62 @@ export default function GerenciarChecklists() {
     }
   };
 
+  // Função mágica que descobre os IDs de todos os filhos do setor escolhido
+  const pegarIdsCascata = (idPaiSelecionado) => {
+    let idsPermitidos = new Set([Number(idPaiSelecionado)]);
+    let adicionouNovo = true;
+    
+    while(adicionouNovo) {
+      adicionouNovo = false;
+      setoresDisponiveis.forEach(s => {
+        if (s.id_setor_pai && idsPermitidos.has(Number(s.id_setor_pai)) && !idsPermitidos.has(Number(s.id_setor))) {
+          idsPermitidos.add(Number(s.id_setor));
+          adicionouNovo = true;
+        }
+      });
+    }
+    return Array.from(idsPermitidos);
+  };
+
   const carregarLista = async () => {
     try {
-      // API alterada: o filtro agora se chama 'id_setor' no Swagger
-      let url = `/api/checklists?page=${page}&limit=5`;
-      if (setorFiltro) url += `&id_setor=${setorFiltro}`;
+      if (!setorFiltro) {
+        // Sem filtro: busca tudo normalmente
+        const resposta = await fetchWithAuth(`/api/checklists?page=${page}&limit=5`);
+        if (resposta.ok) {
+          const json = await resposta.json();
+          setListaChecklists(json.data || []);
+          setTotalPages(json.totalPages || 1);
+        }
+      } else {
+        // Com filtro: busca o setor e TODOS os filhos dele em paralelo
+        const idsCascata = pegarIdsCascata(setorFiltro);
+        
+        const promessas = idsCascata.map(id => fetchWithAuth(`/api/checklists?id_setor=${id}&limit=100`));
+        const respostasFetch = await Promise.all(promessas);
+        
+        let checklistsUnidos = [];
+        
+        for (const res of respostasFetch) {
+          if (res.ok) {
+            const json = await res.json();
+            const dados = json.data || [];
+            checklistsUnidos = [...checklistsUnidos, ...dados];
+          }
+        }
+        
+        // Remove duplicados
+        const checklistsUnicos = Array.from(new Map(checklistsUnidos.map(item => [item.id_checklist, item])).values());
+        
+        // Como juntamos várias requisições manuais para a cascata, fazemos a paginação no frontend
+        const limit = 5;
+        const totalPaginasCalc = Math.ceil(checklistsUnicos.length / limit) || 1;
+        setTotalPages(totalPaginasCalc);
 
-      const resposta = await fetchWithAuth(url);
-      if (resposta.ok) {
-        const json = await resposta.json();
-        setListaChecklists(json.data || []);
-        setTotalPages(json.totalPages || 1);
+        const indexInicio = (page - 1) * limit;
+        const checklistsPaginados = checklistsUnicos.slice(indexInicio, indexInicio + limit);
+        
+        setListaChecklists(checklistsPaginados);
       }
     } catch (erro) {
       console.error('Erro ao buscar a lista:', erro);
@@ -185,6 +238,12 @@ export default function GerenciarChecklists() {
 
   const handleSalvarEdicaoCompleta = async () => {
     try {
+      const usuarioString = localStorage.getItem('usuarioLogado') || '{}';
+      const usuarioSalvo = JSON.parse(usuarioString);
+      
+      const isAdmin = usuarioSalvo.setores?.some(s => String(s).toLowerCase() === 'admin');
+      const setorUsuarioHeader = isAdmin ? 'admin' : JSON.stringify(usuarioSalvo.setores_ids || []);
+
       const payloadCompleto = {
         titulo: novoTitulo,
         id_setor: Number(novoIdSetor),
@@ -199,7 +258,10 @@ export default function GerenciarChecklists() {
 
       const resposta = await fetchWithAuth(`/api/checklists/${checklist.id_checklist}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-setor-usuario': setorUsuarioHeader
+        },
         body: JSON.stringify(payloadCompleto)
       });
 
@@ -257,9 +319,8 @@ export default function GerenciarChecklists() {
     }
   };
 
-  // Função para pegar o nome bonito do setor baseado no ID do checklist
   const getNomeSetor = (idSetor) => {
-    const setor = setoresDisponiveis.find(s => s.id_setor === idSetor);
+    const setor = setoresDisponiveis.find(s => String(s.id_setor) === String(idSetor));
     return setor ? setor.nomeExibicao : `Setor ID: ${idSetor}`;
   };
 
@@ -408,7 +469,7 @@ export default function GerenciarChecklists() {
                       </td>
                     </tr>
                   ))
-                ) : ( <tr><td colSpan="5" className="tabela-vazia">Nenhum checklist encontrado.</td></tr> )}
+                ) : ( <tr><td colSpan="5" className="tabela-vazia">Nenhum checklist encontrado para este setor.</td></tr> )}
               </tbody>
             </table>
           </div>

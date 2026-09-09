@@ -7,14 +7,16 @@ export default function Home() {
   const [user, setUser] = useState(null);
   
   const [alertas, setAlertas] = useState([]);
-  const [popupAberto, setPopupAberto] = useState(true);
+  const [modalNotificacoesAberto, setModalNotificacoesAberto] = useState(false);
 
   const [modalResolver, setModalResolver] = useState({ visivel: false, idExecucao: null });
   const [observacao, setObservacao] = useState('');
   const [modalAviso, setModalAviso] = useState({ visivel: false, tipo: '', titulo: '', mensagem: '' });
 
-  // Estado para guardar os nomes reais dos setores
   const [nomesSetores, setNomesSetores] = useState([]);
+  
+  // NOVO: Estado para controlar a exibição dos subsetores no painel do usuário comum
+  const [mostrarSubsetores, setMostrarSubsetores] = useState(false);
 
   const navigate = useNavigate();
 
@@ -38,9 +40,7 @@ export default function Home() {
 
   useEffect(() => {
     if (user) {
-      carregarSetores(); // Carrega e traduz os setores do usuário
-
-      // Validação segura convertendo para String (evita quebrar se for número)
+      carregarSetores(); 
       const isAdmin = user.setores?.some(s => String(s).toLowerCase() === 'admin');
       
       if (isAdmin) {
@@ -69,7 +69,6 @@ export default function Home() {
 
   const carregarSetores = async () => {
     try {
-      // Pega o array de setores do usuário com as novas lógicas do backend
       let arraySetoresId = [];
       if (Array.isArray(user?.setores)) {
         arraySetoresId = user.setores;
@@ -86,13 +85,11 @@ export default function Home() {
         const json = await res.json();
         const setoresBrutos = json.data || [];
         
-        // 1. Acha os setores que o usuário tem explicitamente no perfil
         const setoresExplicitos = setoresBrutos.filter(s => 
           arrayNormalizado.includes(String(s.id_setor)) || 
           arrayNormalizado.includes(String(s.nome).toLowerCase())
         );
 
-        // 2. Cascata: Pega o ID dos explícitos e busca todos os filhos, netos, etc
         let idsPermitidos = new Set(setoresExplicitos.map(s => Number(s.id_setor)));
         
         let adicionouNovo = true;
@@ -106,14 +103,10 @@ export default function Home() {
           });
         }
 
-        // 3. Pega todos os objetos de setor baseados nos IDs finais permitidos e converte pro texto bonito
         const setoresFinaisDoUsuario = setoresBrutos.filter(s => idsPermitidos.has(Number(s.id_setor)));
-        
         const setoresTraduzidos = setoresFinaisDoUsuario.map(s => construirNomeSetor(s, setoresBrutos));
         
-        // Ordena alfabeticamente para ficar bonito na tela
         setoresTraduzidos.sort((a, b) => a.localeCompare(b));
-          
         setNomesSetores(setoresTraduzidos);
       }
     } catch (erro) {
@@ -185,8 +178,14 @@ export default function Home() {
       });
 
       if (res.ok) {
-        setAlertas(prev => prev.filter(alerta => alerta.id_execucao !== idExecucao));
+        const novosAlertas = alertas.filter(alerta => alerta.id_execucao !== idExecucao);
+        setAlertas(novosAlertas);
         setModalResolver({ visivel: false, idExecucao: null });
+        
+        if (novosAlertas.length === 0) {
+          setModalNotificacoesAberto(false);
+        }
+
         setModalAviso({ visivel: true, tipo: 'sucesso', titulo: 'Sucesso!', mensagem: 'Resolvido e salvo no banco de dados!' });
       } else {
         const erroJson = await res.json().catch(() => ({}));
@@ -202,9 +201,24 @@ export default function Home() {
     return new Date(dataIso).toLocaleString('pt-BR');
   };
 
+  // ==========================================
+  // LÓGICA DE APRESENTAÇÃO DE SETORES (UI)
+  // ==========================================
+  const setoresAgrupados = nomesSetores.reduce((acc, nomeCompleto) => {
+    const partes = nomeCompleto.split(' > ');
+    const pai = partes[0];
+    const filho = partes.length > 1 ? partes.slice(1).join(' > ') : null;
+
+    if (!acc[pai]) acc[pai] = [];
+    if (filho && !acc[pai].includes(filho)) acc[pai].push(filho);
+    return acc;
+  }, {});
+
+  const paisList = Object.keys(setoresAgrupados);
+  const temSubsetores = Object.values(setoresAgrupados).some(filhos => filhos.length > 0);
+
   if (!user) return null; 
 
-  // Checagem segura de Admin para renderizar os botões
   const isAdmin = user.setores?.some(s => String(s).toLowerCase() === 'admin');
 
   return (
@@ -227,8 +241,47 @@ export default function Home() {
         ) : (
           <div className="form-card">
             <h2>Checklist Diário</h2>
-            {/* EXIBIÇÃO BONITA DOS SETORES */}
-            <p>Setores de atuação: <strong>{nomesSetores.length > 0 ? nomesSetores.join(', ') : 'Não especificado'}</strong></p>
+            
+            {/* NOVO VISUAL DE SETORES */}
+            <div style={{ marginBottom: '1.5rem', backgroundColor: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0', textAlign: 'left' }}>
+              <p style={{ margin: '0 0 10px 0', color: '#475569', fontSize: '0.9rem', fontWeight: 'bold' }}>Seus Setores:</p>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                {paisList.length > 0 ? (
+                  paisList.map(pai => (
+                    <span key={pai} style={{ backgroundColor: '#0284c7', color: 'white', padding: '4px 12px', borderRadius: '15px', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                      {pai}
+                    </span>
+                  ))
+                ) : (
+                  <span style={{ color: '#64748b' }}>Não especificado</span>
+                )}
+
+                {temSubsetores && (
+                  <button 
+                    onClick={() => setMostrarSubsetores(!mostrarSubsetores)}
+                    style={{ background: 'none', border: '1px solid #cbd5e1', borderRadius: '15px', padding: '4px 12px', fontSize: '0.8rem', color: '#475569', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', transition: 'all 0.2s', backgroundColor: 'white' }}
+                  >
+                    {mostrarSubsetores ? 'Esconder detalhes ▲' : 'Ver subsetores ▼'}
+                  </button>
+                )}
+              </div>
+
+              {/* ÁREA EXPANSÍVEL DOS SUBSETORES */}
+              {mostrarSubsetores && temSubsetores && (
+                <div style={{ marginTop: '15px', paddingTop: '12px', borderTop: '1px dashed #cbd5e1', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {Object.entries(setoresAgrupados).map(([pai, filhos]) => {
+                    if (filhos.length === 0) return null;
+                    return (
+                      <div key={pai} style={{ fontSize: '0.85rem', color: '#334155' }}>
+                        <strong style={{ color: '#0284c7' }}>↳ {pai}:</strong> {filhos.join(', ')}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             <div className="admin-actions">
               <button className="primary-button" onClick={() => navigate('/preencher-checklist')}>Iniciar Checklist</button>
             </div>
@@ -236,33 +289,75 @@ export default function Home() {
         )}
       </main>
 
+      {/* ÍCONE FLUTUANTE DE NOTIFICAÇÃO */}
       {isAdmin && alertas.length > 0 && (
-        <div className={`alerta-flutuante-container ${popupAberto ? 'aberto' : 'fechado'}`}>
-          <div className="alerta-header" onClick={() => setPopupAberto(!popupAberto)}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span className="alerta-icone">⚠️</span>
-              <strong>Atenção: Não Conformidades pendentes ({alertas.length})</strong>
-            </div>
-            <button className="btn-toggle-alerta">{popupAberto ? '▼' : '▲'}</button>
-          </div>
-          {popupAberto && (
-            <div className="alerta-body">
-              {alertas.map((alerta) => (
-                <div key={alerta.id_execucao} className="alerta-item">
-                  <span className="alerta-os">Execução Nº {alerta.id_execucao}</span>
-                  <p className="alerta-checklist"><strong>Checklist:</strong> {alerta.checklist_titulo}</p>
-                  <p className="alerta-operador"><strong>Operador:</strong> {alerta.operador}</p>
-                  <p className="alerta-pergunta"><small>Data: {formatarData(alerta.data_execucao)}</small></p>
-                  <button className="btn-arrumado" onClick={() => abrirModalResolver(alerta.id_execucao)}>
-                    ✅ Adicionar Tratativa e Resolver
-                  </button>
+        <>
+          {!modalNotificacoesAberto && (
+            <button 
+              className="icone-notificacao-flutuante"
+              onClick={() => setModalNotificacoesAberto(true)}
+              style={{
+                position: 'fixed', bottom: '30px', right: '30px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '50%',
+                width: '60px', height: '60px', fontSize: '24px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(220, 38, 38, 0.4)',
+                display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, animation: 'pulse 2s infinite'
+              }}
+              title="Ver Não Conformidades Pendentes"
+            >
+              ⚠️
+              <span style={{
+                position: 'absolute', top: '-5px', right: '-5px', backgroundColor: 'white', color: '#dc2626', fontSize: '12px', fontWeight: 'bold',
+                width: '24px', height: '24px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '2px solid #dc2626'
+              }}>
+                {alertas.length}
+              </span>
+            </button>
+          )}
+
+          {modalNotificacoesAberto && (
+            <div 
+              style={{
+                position: 'fixed', bottom: '20px', right: '20px', width: '350px', maxHeight: '80vh', backgroundColor: 'white',
+                borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', zIndex: 1000, overflow: 'hidden', border: '1px solid #e2e8f0'
+              }}
+            >
+              <div style={{ backgroundColor: '#dc2626', color: 'white', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '18px' }}>⚠️</span>
+                  <strong style={{ fontSize: '16px' }}>Pendências ({alertas.length})</strong>
                 </div>
-              ))}
+                <button 
+                  onClick={() => setModalNotificacoesAberto(false)}
+                  style={{ background: 'none', border: 'none', color: 'white', fontSize: '18px', cursor: 'pointer', fontWeight: 'bold' }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div style={{ padding: '15px', overflowY: 'auto', maxHeight: 'calc(80vh - 60px)', backgroundColor: '#f8fafc' }}>
+                {alertas.map((alerta) => (
+                  <div key={alerta.id_execucao} style={{ backgroundColor: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px', marginBottom: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                    <span style={{ display: 'inline-block', backgroundColor: '#fee2e2', color: '#991b1b', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', marginBottom: '8px' }}>
+                      Execução Nº {alerta.id_execucao}
+                    </span>
+                    <p style={{ margin: '0 0 4px 0', fontSize: '0.9rem', color: '#334155' }}><strong>Checklist:</strong> {alerta.checklist_titulo}</p>
+                    <p style={{ margin: '0 0 4px 0', fontSize: '0.9rem', color: '#334155' }}><strong>Operador:</strong> {alerta.operador}</p>
+                    <p style={{ margin: '0 0 10px 0', fontSize: '0.8rem', color: '#64748b' }}>Data: {formatarData(alerta.data_execucao)}</p>
+                    
+                    <button 
+                      onClick={() => abrirModalResolver(alerta.id_execucao)}
+                      style={{ width: '100%', backgroundColor: '#0284c7', color: 'white', border: 'none', padding: '8px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', transition: 'background-color 0.2s' }}
+                    >
+                      ✅ Resolver Pendência
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
-        </div>
+        </>
       )}
 
+      {/* MODAL DE RESOLUÇÃO */}
       {modalResolver.visivel && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -271,6 +366,7 @@ export default function Home() {
             <textarea 
               style={{ width: '100%', minHeight: '90px', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '15px', fontFamily: 'inherit', resize: 'none' }}
               value={observacao} onChange={(e) => setObservacao(e.target.value)}
+              placeholder="Descreva o que foi feito..."
             />
             <div style={{ display: 'flex', gap: '10px' }}>
               <button className="secondary-button" style={{ flex: 1 }} onClick={() => setModalResolver({ visivel: false, idExecucao: null })}>Cancelar</button>
@@ -280,6 +376,7 @@ export default function Home() {
         </div>
       )}
 
+      {/* MODAL AVISOS */}
       {modalAviso.visivel && (
         <div className="modal-overlay">
           <div className="modal-content">
