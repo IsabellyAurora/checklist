@@ -278,7 +278,7 @@ export default function Relatorios() {
                           <strong>{exec.checklist_titulo || exec.titulo}</strong><br/>
                           
                           {/* Traduz o Setor com Inteligência Hierárquica Blindada */}
-                          <small>{getNomeSetor(exec.id_setor || exec.setor)}</small>
+                          <small>{getNomeSetor(exec.checklist_setor || exec.id_setor || exec.setor)}</small>
                           
                           {exec.ordem_servico && <><br/><small style={{ color: '#d32f2f', fontWeight: 'bold' }}>OS: {exec.ordem_servico}</small></>}
                         </td>
@@ -350,7 +350,7 @@ export default function Relatorios() {
               <p><strong>Ordem de Serviço (OS):</strong> <span style={{ color: '#d32f2f', fontWeight: 'bold' }}>{detalhes.ordem_servico || 'Não informada'}</span></p>
               
               {/* Traduz o Setor na visão de detalhes */}
-              <p><strong>Checklist:</strong> {detalhes.titulo} ({getNomeSetor(detalhes.id_setor || detalhes.setor)})</p>
+              <p><strong>Checklist:</strong> {detalhes.titulo} ({getNomeSetor(detalhes.checklist_setor || detalhes.id_setor || detalhes.setor)})</p>
               
               <p><strong>Operador:</strong> {detalhes.usuario_nome}</p>
               <p><strong>Status:</strong> {detalhes.status || 'Concluído'}</p>

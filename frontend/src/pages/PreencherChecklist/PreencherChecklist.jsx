@@ -33,7 +33,10 @@ export default function PreencherChecklist() {
   const [imagemAmpliada, setImagemAmpliada] = useState(null);
   
   const [nomesSetores, setNomesSetores] = useState([]);
-  const [todosSetores, setTodosSetores] = useState([]); // Salva todos os setores para usar na interface
+  const [todosSetores, setTodosSetores] = useState([]); 
+  
+  // NOVO: Estado para controlar a expansão dos subsetores bonitos na tela
+  const [mostrarSubsetores, setMostrarSubsetores] = useState(false);
 
   const navigate = useNavigate();
 
@@ -83,15 +86,12 @@ export default function PreencherChecklist() {
   // LÓGICA BLINDADA: SETOR PAI > FILHO
   // ==========================================
   const construirNomeSetor = (setorAtual, listaCompleta) => {
-    // Força a string para não dar problema se for Number 0 ou Texto '0'
     if (!setorAtual.id_setor_pai || String(setorAtual.id_setor_pai) === '0') {
       return setorAtual.nome; 
     }
     
-    // Procura o pai garantindo que ambos são comparados como textos
     const setorPai = listaCompleta.find(s => String(s.id_setor) === String(setorAtual.id_setor_pai));
     
-    // Evita loop infinito caso o pai aponte para ele mesmo por erro no banco
     if (setorPai && String(setorPai.id_setor) !== String(setorAtual.id_setor)) {
       const nomeDoPai = construirNomeSetor(setorPai, listaCompleta);
       return `${nomeDoPai} > ${setorAtual.nome}`;
@@ -128,7 +128,6 @@ export default function PreencherChecklist() {
         const setoresBrutos = jsonSetores.data || [];
         setTodosSetores(setoresBrutos);
         
-        // 1. Acha os setores que o usuário tem explicitamente no perfil
         const setoresExplicitos = setoresBrutos.filter(s => 
           arrayNormalizado.includes(String(s.id_setor)) || 
           arrayNormalizado.includes(String(s.nome).toLowerCase())
@@ -136,7 +135,6 @@ export default function PreencherChecklist() {
 
         setNomesSetores(setoresExplicitos.map(s => construirNomeSetor(s, setoresBrutos)));
 
-        // 2. Cascata: Pega o ID dos explícitos e busca todos os filhos, netos, etc
         let idsPermitidos = new Set(setoresExplicitos.map(s => Number(s.id_setor)));
         
         let adicionouNovo = true;
@@ -157,7 +155,6 @@ export default function PreencherChecklist() {
           return;
         }
 
-        // 3. Busca na API todos os checklists de todos esses setores e filhos
         const promessas = idsReaisDeBusca.map(id => fetchWithAuth(`/api/checklists?id_setor=${id}`));
         const respostasFetch = await Promise.all(promessas);
         
@@ -170,7 +167,6 @@ export default function PreencherChecklist() {
           }
         }
         
-        // Remove duplicados
         const checklistsUnicos = Array.from(new Map(checklistsUnidos.map(item => [item.id_checklist, item])).values());
         setChecklistsDisponiveis(checklistsUnicos);
       }
@@ -394,12 +390,68 @@ export default function PreencherChecklist() {
     sessionStorage.setItem('scrollChecklist', window.scrollY.toString());
   };
 
+  // ==========================================
+  // LÓGICA DE APRESENTAÇÃO DE SETORES (UI)
+  // ==========================================
+  const setoresAgrupados = nomesSetores.reduce((acc, nomeCompleto) => {
+    const partes = nomeCompleto.split(' > ');
+    const pai = partes[0];
+    const filho = partes.length > 1 ? partes.slice(1).join(' > ') : null;
+
+    if (!acc[pai]) acc[pai] = [];
+    if (filho && !acc[pai].includes(filho)) acc[pai].push(filho);
+    return acc;
+  }, {});
+
+  const paisList = Object.keys(setoresAgrupados);
+  const temSubsetores = Object.values(setoresAgrupados).some(filhos => filhos.length > 0);
+
   return (
     <div className="preencher-container">
       <div className="preencher-card" style={{ maxWidth: '900px' }}>
         <h2>Preencher Checklist</h2>
         
-        <p>Setores de Atuação: <strong>{nomesSetores.length > 0 ? nomesSetores.join(', ') : 'Não especificado'}</strong></p>
+        {/* ======================================================= */}
+        {/* VISUAL BONITO DE SETORES COM CHIPS E BOTÃO EXPANSÍVEL   */}
+        {/* ======================================================= */}
+        <div style={{ marginBottom: '1.5rem', backgroundColor: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0', textAlign: 'left' }}>
+          <p style={{ margin: '0 0 10px 0', color: '#475569', fontSize: '0.9rem', fontWeight: 'bold' }}>Seus Setores Ativos:</p>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {paisList.length > 0 ? (
+              paisList.map(pai => (
+                <span key={pai} style={{ backgroundColor: '#0284c7', color: 'white', padding: '4px 12px', borderRadius: '15px', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                  {pai}
+                </span>
+              ))
+            ) : (
+              <span style={{ color: '#64748b' }}>Buscando setores...</span>
+            )}
+
+            {temSubsetores && (
+              <button 
+                type="button"
+                onClick={() => setMostrarSubsetores(!mostrarSubsetores)}
+                style={{ background: 'none', border: '1px solid #cbd5e1', borderRadius: '15px', padding: '4px 12px', fontSize: '0.8rem', color: '#475569', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', transition: 'all 0.2s', backgroundColor: 'white' }}
+              >
+                {mostrarSubsetores ? 'Esconder detalhes ▲' : 'Ver subsetores ▼'}
+              </button>
+            )}
+          </div>
+
+          {mostrarSubsetores && temSubsetores && (
+            <div style={{ marginTop: '15px', paddingTop: '12px', borderTop: '1px dashed #cbd5e1', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {Object.entries(setoresAgrupados).map(([pai, filhos]) => {
+                if (filhos.length === 0) return null;
+                return (
+                  <div key={pai} style={{ fontSize: '0.85rem', color: '#334155' }}>
+                    <strong style={{ color: '#0284c7' }}>↳ {pai}:</strong> {filhos.join(', ')}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         <div className="selecao-checklist" style={{ position: 'relative' }}>
           <label htmlFor="busca-checklist">Busque ou selecione uma tarefa:</label>
@@ -428,7 +480,6 @@ export default function PreencherChecklist() {
                     <span className="dropdown-icone" style={{ marginRight: '8px' }}>📄</span>
                     <strong>{c.titulo}</strong>
                   </div>
-                  {/* EXIBINDO O SETOR PAI E FILHO NO DROPDOWN */}
                   <span style={{ fontSize: '0.8rem', color: '#64748b', marginLeft: '28px' }}>
                     Setor: {getNomeSetorParaDropdown(c.id_setor)}
                   </span>

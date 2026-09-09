@@ -5,9 +5,10 @@ const salvarExecucao = async (idChecklist, idUsuario, respostas, status_nc = 'SE
   try {
     await client.query('BEGIN');
 
+    // ⚠️ ALTERAÇÃO AQUI: Adicionamos a coluna 'status' e forçamos o valor 'Concluído'
     const resExecucao = await client.query(
-      `INSERT INTO execucao (id_checklist, id_usuario, status_nc, data_inicio, data_conclusao, ordem_servico) 
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id_execucao`,
+      `INSERT INTO execucao (id_checklist, id_usuario, status, status_nc, data_inicio, data_conclusao, ordem_servico) 
+       VALUES ($1, $2, 'Concluído', $3, $4, $5, $6) RETURNING id_execucao`,
       [
         idChecklist, 
         idUsuario, 
