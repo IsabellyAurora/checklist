@@ -17,8 +17,10 @@ export default function GerenciarChecklists() {
   const [totalPages, setTotalPages] = useState(1);
   const [setorFiltro, setSetorFiltro] = useState('');
   
-  // ESTADO PARA OS SETORES DO BANCO DE DADOS
+  // ESTADO PARA OS SETORES
   const [setoresDisponiveis, setSetoresDisponiveis] = useState([]);
+  const [buscaSetorEdit, setBuscaSetorEdit] = useState('');
+  const [gruposExpandidos, setGruposExpandidos] = useState({});
 
   const [alerta, setAlerta] = useState({ visivel: false, tipo: '', titulo: '', mensagem: '' });
   const [imagemAmpliada, setImagemAmpliada] = useState(null);
@@ -34,7 +36,6 @@ export default function GerenciarChecklists() {
   }, []);
 
   useEffect(() => {
-    // Só carrega a lista se os setores já estiverem disponíveis para podermos calcular a cascata
     if (setoresDisponiveis.length > 0) {
       carregarLista();
     }
@@ -70,7 +71,6 @@ export default function GerenciarChecklists() {
     }
   };
 
-  // Função mágica que descobre os IDs de todos os filhos do setor escolhido
   const pegarIdsCascata = (idPaiSelecionado) => {
     let idsPermitidos = new Set([Number(idPaiSelecionado)]);
     let adicionouNovo = true;
@@ -90,7 +90,6 @@ export default function GerenciarChecklists() {
   const carregarLista = async () => {
     try {
       if (!setorFiltro) {
-        // Sem filtro: busca tudo normalmente
         const resposta = await fetchWithAuth(`/api/checklists?page=${page}&limit=5`);
         if (resposta.ok) {
           const json = await resposta.json();
@@ -98,14 +97,11 @@ export default function GerenciarChecklists() {
           setTotalPages(json.totalPages || 1);
         }
       } else {
-        // Com filtro: busca o setor e TODOS os filhos dele em paralelo
         const idsCascata = pegarIdsCascata(setorFiltro);
-        
         const promessas = idsCascata.map(id => fetchWithAuth(`/api/checklists?id_setor=${id}&limit=100`));
         const respostasFetch = await Promise.all(promessas);
         
         let checklistsUnidos = [];
-        
         for (const res of respostasFetch) {
           if (res.ok) {
             const json = await res.json();
@@ -114,10 +110,8 @@ export default function GerenciarChecklists() {
           }
         }
         
-        // Remove duplicados
         const checklistsUnicos = Array.from(new Map(checklistsUnidos.map(item => [item.id_checklist, item])).values());
         
-        // Como juntamos várias requisições manuais para a cascata, fazemos a paginação no frontend
         const limit = 5;
         const totalPaginasCalc = Math.ceil(checklistsUnicos.length / limit) || 1;
         setTotalPages(totalPaginasCalc);
@@ -152,6 +146,8 @@ export default function GerenciarChecklists() {
         setChecklist(dados);
         setNovoTitulo(dados.titulo);
         setNovoIdSetor(dados.id_setor || '');
+        setBuscaSetorEdit(''); // Limpa a busca ao abrir a edição
+        setGruposExpandidos({}); // Fecha a sanfona ao abrir a edição
         
         const itensCompletos = (dados.itens || []).map(item => ({
           ...item,
@@ -324,6 +320,28 @@ export default function GerenciarChecklists() {
     return setor ? setor.nomeExibicao : `Setor ID: ${idSetor}`;
   };
 
+  // ==========================================
+  // LÓGICA DE AGRUPAMENTO (SANFONA)
+  // ==========================================
+  const setoresFiltradosEdicao = setoresDisponiveis.filter(setor => 
+    setor.nomeExibicao.toLowerCase().includes(buscaSetorEdit.toLowerCase())
+  );
+
+  const setoresAgrupadosEdicao = setoresFiltradosEdicao.reduce((acc, setor) => {
+    const partes = setor.nomeExibicao.split(' > ');
+    const pai = partes[0];
+    if (!acc[pai]) acc[pai] = [];
+    acc[pai].push(setor);
+    return acc;
+  }, {});
+
+  const toggleGrupoEdicao = (nomePai) => {
+    setGruposExpandidos(prev => ({
+      ...prev,
+      [nomePai]: !prev[nomePai]
+    }));
+  };
+
   return (
     <div className="gerenciar-container">
       <div className="gerenciar-card" style={{ maxWidth: '950px' }}>
@@ -351,14 +369,81 @@ export default function GerenciarChecklists() {
                   <input type="text" value={novoTitulo} onChange={(e) => setNovoTitulo(e.target.value)} className="input-editar-titulo" />
                 </div>
 
+                {/* ======================================================= */}
+                {/* SETOR (MUDADO DE SELECT PARA SANFONA INTERATIVA) */}
+                {/* ======================================================= */}
                 <div className="form-group-edicao">
-                  <label>Setor:</label>
-                  <select value={novoIdSetor} onChange={(e) => setNovoIdSetor(e.target.value)} className="select-filtro">
-                    <option value="" disabled>Selecione um setor...</option>
-                    {setoresDisponiveis.map(s => (
-                      <option key={s.id_setor} value={s.id_setor}>{s.nomeExibicao}</option>
-                    ))}
-                  </select>
+                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Setor Responsável:</label>
+                  
+                  <input
+                    type="text"
+                    placeholder="🔍 Pesquisar setor..."
+                    value={buscaSetorEdit}
+                    onChange={(e) => setBuscaSetorEdit(e.target.value)}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '10px', fontSize: '0.95rem', boxSizing: 'border-box' }}
+                  />
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#f8fafc', maxHeight: '250px', overflowY: 'auto', flexShrink: 0, WebkitOverflowScrolling: 'touch' }}>
+                    {Object.keys(setoresAgrupadosEdicao).length > 0 ? (
+                      Object.entries(setoresAgrupadosEdicao).map(([nomePai, listaSetores]) => {
+                        const pai = listaSetores.find(s => s.nomeExibicao === nomePai);
+                        const filhos = listaSetores.filter(s => s.nomeExibicao !== nomePai);
+                        const isExpandido = gruposExpandidos[nomePai] || buscaSetorEdit.length > 0;
+
+                        return (
+                          <div key={nomePai} style={{ flexShrink: 0, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', backgroundColor: 'white' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '8px 12px' }}>
+                              {pai ? (
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold', color: '#334155', flex: 1 }}>
+                                  <input
+                                    type="radio"
+                                    name="setorSelecionadoEdicao"
+                                    value={pai.id_setor}
+                                    checked={String(novoIdSetor) === String(pai.id_setor)}
+                                    onChange={(e) => setNovoIdSetor(e.target.value)}
+                                    style={{ width: '18px', height: '18px', cursor: 'pointer', flexShrink: 0 }}
+                                  />
+                                  {pai.nomeExibicao}
+                                </label>
+                              ) : (
+                                <span style={{ fontWeight: 'bold', color: '#334155', flex: 1 }}>{nomePai} (Subsetores)</span>
+                              )}
+
+                              {filhos.length > 0 && (
+                                <button 
+                                  type="button"
+                                  onClick={() => toggleGrupoEdicao(nomePai)}
+                                  style={{ background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.8rem', color: '#0284c7', fontWeight: 'bold' }}
+                                >
+                                  {isExpandido ? '▲ Ocultar' : '▼ Ver subsetores'}
+                                </button>
+                              )}
+                            </div>
+
+                            {isExpandido && filhos.length > 0 && (
+                              <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid #cbd5e1' }}>
+                                {filhos.map(filho => (
+                                  <label key={filho.id_setor} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'normal', color: '#555', paddingLeft: '24px' }}>
+                                    <input
+                                      type="radio"
+                                      name="setorSelecionadoEdicao"
+                                      value={filho.id_setor}
+                                      checked={String(novoIdSetor) === String(filho.id_setor)}
+                                      onChange={(e) => setNovoIdSetor(e.target.value)}
+                                      style={{ width: '18px', height: '18px', cursor: 'pointer', flexShrink: 0 }}
+                                    />
+                                    {filho.nomeExibicao.replace(`${nomePai} > `, '↳ ')} 
+                                  </label>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <span style={{ fontSize: '0.9rem', color: '#888', textAlign: 'center', padding: '10px 0' }}>Nenhum setor encontrado para a busca.</span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="itens-edicao-secao">

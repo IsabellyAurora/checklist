@@ -11,8 +11,11 @@ export default function GerenciarUsuarios() {
   // Estado para a barra de pesquisa da TABELA principal
   const [buscaSetor, setBuscaSetor] = useState('');
   
-  // NOVO: Estado para a barra de pesquisa DENTRO DO MODAL de setores
+  // Estado para a barra de pesquisa DENTRO DO MODAL de setores
   const [buscaSetorModal, setBuscaSetorModal] = useState('');
+  
+  // NOVO: Estado para controlar a expansão da sanfona no Modal
+  const [gruposExpandidos, setGruposExpandidos] = useState({});
   
   const [alerta, setAlerta] = useState({ visivel: false, tipo: '', titulo: '', mensagem: '' });
   
@@ -43,9 +46,11 @@ export default function GerenciarUsuarios() {
   // LÓGICA DE SETORES (PAI > FILHO)
   // ==========================================
   const construirNomeSetor = (setorAtual, todosSetores) => {
-    if (!setorAtual.id_setor_pai) return setorAtual.nome; 
-    const setorPai = todosSetores.find(s => s.id_setor === setorAtual.id_setor_pai);
-    if (setorPai) {
+    if (!setorAtual.id_setor_pai || String(setorAtual.id_setor_pai) === '0') {
+      return setorAtual.nome; 
+    }
+    const setorPai = todosSetores.find(s => String(s.id_setor) === String(setorAtual.id_setor_pai));
+    if (setorPai && String(setorPai.id_setor) !== String(setorAtual.id_setor)) {
       const nomeDoPai = construirNomeSetor(setorPai, todosSetores);
       return `${nomeDoPai} > ${setorAtual.nome}`;
     }
@@ -72,9 +77,10 @@ export default function GerenciarUsuarios() {
   // ==========================================
   const getHeadersAdmin = () => {
     const userData = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
+    const isAdmin = userData?.setores?.some(s => String(s).toLowerCase() === 'admin');
     return {
       'Content-Type': 'application/json',
-      'x-setor-usuario': userData.setor || 'admin'
+      'x-setor-usuario': isAdmin ? 'admin' : JSON.stringify(userData?.setores_ids || [])
     };
   };
 
@@ -96,17 +102,32 @@ export default function GerenciarUsuarios() {
     }
   };
 
-  // Filtrando a lista de usuários baseada no que foi digitado na barra de pesquisa principal
   const usuariosFiltrados = usuarios.filter((user) => {
     if (!buscaSetor) return true;
     const setoresString = user.setores ? user.setores.join(', ').toLowerCase() : '';
     return setoresString.includes(buscaSetor.toLowerCase());
   });
 
-  // NOVO: Filtrando a lista de checkboxes dentro do modal de edição
+  // Filtrando a lista de checkboxes dentro do modal de edição
   const setoresFiltradosModal = setoresDisponiveis.filter((setor) => {
     return setor.nomeExibicao.toLowerCase().includes(buscaSetorModal.toLowerCase());
   });
+
+  // Agrupa os setores filtrados por Setor Pai para a Sanfona do Modal
+  const setoresAgrupadosModal = setoresFiltradosModal.reduce((acc, setor) => {
+    const partes = setor.nomeExibicao.split(' > ');
+    const pai = partes[0];
+    if (!acc[pai]) acc[pai] = [];
+    acc[pai].push(setor);
+    return acc;
+  }, {});
+
+  const toggleGrupo = (nomePai) => {
+    setGruposExpandidos(prev => ({
+      ...prev,
+      [nomePai]: !prev[nomePai]
+    }));
+  };
 
   const mostrarAlerta = (tipo, titulo, mensagem) => setAlerta({ visivel: true, tipo, titulo, mensagem });
   const fecharAlerta = () => setAlerta({ ...alerta, visivel: false });
@@ -173,14 +194,15 @@ export default function GerenciarUsuarios() {
   const abrirModalSetores = (user) => {
     let idsSelecionados = [];
     if (user.setores_ids) {
-      idsSelecionados = user.setores_ids;
+      idsSelecionados = user.setores_ids.map(Number);
     } else if (Array.isArray(user.setores)) {
       idsSelecionados = setoresDisponiveis
-        .filter(s => user.setores.includes(s.nome))
-        .map(s => s.id_setor);
+        .filter(s => user.setores.includes(s.nome) || user.setores.includes(String(s.id_setor)))
+        .map(s => Number(s.id_setor));
     }
 
-    setBuscaSetorModal(''); // Limpa a busca do modal ao abri-lo
+    setBuscaSetorModal(''); 
+    setGruposExpandidos({}); // Reseta as sanfonas
     setModalSetores({
       visivel: true,
       id_usuario: user.id_usuario,
@@ -190,12 +212,13 @@ export default function GerenciarUsuarios() {
   };
 
   const handleCheckboxSetorChange = (id_setor) => {
+    const idNum = Number(id_setor);
     setModalSetores(prev => {
       const selecionados = prev.setoresSelecionados;
-      if (selecionados.includes(id_setor)) {
-        return { ...prev, setoresSelecionados: selecionados.filter(id => id !== id_setor) };
+      if (selecionados.includes(idNum)) {
+        return { ...prev, setoresSelecionados: selecionados.filter(id => id !== idNum) };
       } else {
-        return { ...prev, setoresSelecionados: [...selecionados, id_setor] };
+        return { ...prev, setoresSelecionados: [...selecionados, idNum] };
       }
     });
   };
@@ -239,9 +262,6 @@ export default function GerenciarUsuarios() {
         <h2>Gerenciar Usuários</h2>
         <p>Lista de funcionários cadastrados no sistema.</p>
 
-        {/* ========================================================= */}
-        {/* BARRA DE PESQUISA DA TABELA PRINCIPAL */}
-        {/* ========================================================= */}
         <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f8fafc', padding: '10px 15px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
           <label htmlFor="buscaSetor" style={{ fontWeight: 'bold', color: '#475569', margin: 0 }}>
             🔍 Buscar por Setor:
@@ -354,7 +374,7 @@ export default function GerenciarUsuarios() {
       </div>
 
       {/* ========================================================= */}
-      {/* MODAL PARA EDITAR SETORES DO USUÁRIO */}
+      {/* MODAL PARA EDITAR SETORES DO USUÁRIO (AGORA COM SANFONA) */}
       {/* ========================================================= */}
       {modalSetores.visivel && (
         <div className="modal-overlay">
@@ -364,36 +384,79 @@ export default function GerenciarUsuarios() {
               Selecione os setores de atuação para o usuário <strong>{modalSetores.nome}</strong>.
             </p>
 
-            {/* NOVA BARRA DE PESQUISA DENTRO DO MODAL */}
             <input
               type="text"
               placeholder="🔍 Pesquisar setor na lista..."
               value={buscaSetorModal}
               onChange={(e) => setBuscaSetorModal(e.target.value)}
               style={{ 
-                width: '100%', 
-                padding: '10px 12px', 
-                borderRadius: '6px', 
-                border: '1px solid #cbd5e1', 
-                fontSize: '0.95rem', 
-                marginBottom: '10px',
-                boxSizing: 'border-box'
+                width: '100%', padding: '10px 12px', borderRadius: '6px', 
+                border: '1px solid #cbd5e1', fontSize: '0.95rem', marginBottom: '10px', boxSizing: 'border-box'
               }}
             />
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#f8fafc', maxHeight: '220px', overflowY: 'auto', marginBottom: '20px' }}>
-              {setoresFiltradosModal.map(setor => (
-                <label key={setor.id_setor} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'normal', color: '#334155' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={modalSetores.setoresSelecionados.includes(setor.id_setor)}
-                    onChange={() => handleCheckboxSetorChange(setor.id_setor)}
-                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                  />
-                  {setor.nomeExibicao}
-                </label>
-              ))}
-              {setoresFiltradosModal.length === 0 && (
+            <div style={{ 
+              display: 'flex', flexDirection: 'column', gap: '10px', padding: '10px', 
+              border: '1px solid #cbd5e1', borderRadius: '6px', background: '#f8fafc', 
+              maxHeight: '280px', overflowY: 'auto', marginBottom: '20px', flexShrink: 0,
+              WebkitOverflowScrolling: 'touch' 
+            }}>
+              {Object.keys(setoresAgrupadosModal).length > 0 ? (
+                Object.entries(setoresAgrupadosModal).map(([nomePai, listaSetores]) => {
+                  const pai = listaSetores.find(s => s.nomeExibicao === nomePai);
+                  const filhos = listaSetores.filter(s => s.nomeExibicao !== nomePai);
+                  const isExpandido = gruposExpandidos[nomePai] || buscaSetorModal.length > 0;
+
+                  return (
+                    <div key={nomePai} style={{ flexShrink: 0, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', backgroundColor: 'white' }}>
+                      
+                      {/* PAI */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '8px 12px' }}>
+                        {pai ? (
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold', color: '#334155', flex: 1 }}>
+                            <input
+                              type="checkbox"
+                              checked={modalSetores.setoresSelecionados.includes(Number(pai.id_setor))}
+                              onChange={() => handleCheckboxSetorChange(pai.id_setor)}
+                              style={{ width: '18px', height: '18px', cursor: 'pointer', flexShrink: 0 }}
+                            />
+                            {pai.nomeExibicao}
+                          </label>
+                        ) : (
+                          <span style={{ fontWeight: 'bold', color: '#334155', flex: 1 }}>{nomePai} (Subsetores)</span>
+                        )}
+
+                        {filhos.length > 0 && (
+                          <button 
+                            type="button"
+                            onClick={() => toggleGrupo(nomePai)}
+                            style={{ background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.8rem', color: '#0284c7', fontWeight: 'bold' }}
+                          >
+                            {isExpandido ? '▲ Ocultar' : '▼ Ver subsetores'}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* FILHOS */}
+                      {isExpandido && filhos.length > 0 && (
+                        <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid #cbd5e1' }}>
+                          {filhos.map(filho => (
+                            <label key={filho.id_setor} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'normal', color: '#555', paddingLeft: '24px' }}>
+                              <input
+                                type="checkbox"
+                                checked={modalSetores.setoresSelecionados.includes(Number(filho.id_setor))}
+                                onChange={() => handleCheckboxSetorChange(filho.id_setor)}
+                                style={{ width: '18px', height: '18px', cursor: 'pointer', flexShrink: 0 }}
+                              />
+                              {filho.nomeExibicao.replace(`${nomePai} > `, '↳ ')} 
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
                 <span style={{ color: '#64748b', fontSize: '0.9rem', textAlign: 'center', padding: '10px 0' }}>
                   Nenhum setor encontrado com esse nome.
                 </span>

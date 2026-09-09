@@ -12,8 +12,9 @@ export default function CadastroChecklist() {
     { descricao: '', tipo: 'booleano', obrigatorio: true, imagem: null, preview: null }
   ]);
   
-  // ESTADO PARA GUARDAR OS SETORES QUE VEM DO BANCO DE DADOS
   const [setoresDisponiveis, setSetoresDisponiveis] = useState([]);
+  const [buscaSetor, setBuscaSetor] = useState('');
+  const [gruposExpandidos, setGruposExpandidos] = useState({});
   
   const [alerta, setAlerta] = useState({ visivel: false, tipo: '', titulo: '', mensagem: '' });
   const [imagemAmpliada, setImagemAmpliada] = useState(null);
@@ -24,11 +25,14 @@ export default function CadastroChecklist() {
     carregarSetores();
   }, []);
 
-  const construirNomeSetor = (setorAtual, todosSetores) => {
-    if (!setorAtual.id_setor_pai) return setorAtual.nome; 
-    const setorPai = todosSetores.find(s => s.id_setor === setorAtual.id_setor_pai);
-    if (setorPai) {
-      const nomeDoPai = construirNomeSetor(setorPai, todosSetores);
+  const construirNomeSetor = (setorAtual, listaCompleta) => {
+    if (!setorAtual.id_setor_pai || String(setorAtual.id_setor_pai) === '0') {
+      return setorAtual.nome; 
+    }
+    const setorPai = listaCompleta.find(s => String(s.id_setor) === String(setorAtual.id_setor_pai));
+    
+    if (setorPai && String(setorPai.id_setor) !== String(setorAtual.id_setor)) {
+      const nomeDoPai = construirNomeSetor(setorPai, listaCompleta);
       return `${nomeDoPai} > ${setorAtual.nome}`;
     }
     return setorAtual.nome;
@@ -50,6 +54,25 @@ export default function CadastroChecklist() {
     } catch (erro) {
       console.error("Erro ao carregar setores", erro);
     }
+  };
+
+  const setoresFiltrados = setoresDisponiveis.filter(setor => 
+    setor.nomeExibicao.toLowerCase().includes(buscaSetor.toLowerCase())
+  );
+
+  const setoresAgrupados = setoresFiltrados.reduce((acc, setor) => {
+    const partes = setor.nomeExibicao.split(' > ');
+    const pai = partes[0];
+    if (!acc[pai]) acc[pai] = [];
+    acc[pai].push(setor);
+    return acc;
+  }, {});
+
+  const toggleGrupo = (nomePai) => {
+    setGruposExpandidos(prev => ({
+      ...prev,
+      [nomePai]: !prev[nomePai]
+    }));
   };
 
   const mostrarAlerta = (tipo, titulo, mensagem) => {
@@ -90,6 +113,13 @@ export default function CadastroChecklist() {
     }
   };
 
+  const getAdminHeader = () => {
+    const usuarioStorage = localStorage.getItem('usuarioLogado');
+    const usuarioLogado = usuarioStorage ? JSON.parse(usuarioStorage) : null;
+    const isAdmin = usuarioLogado?.setores?.some(s => String(s).toLowerCase() === 'admin');
+    return isAdmin ? 'admin' : JSON.stringify(usuarioLogado?.setores_ids || []);
+  };
+
   const handleCadastro = async (e) => {
     e.preventDefault();
     
@@ -98,7 +128,6 @@ export default function CadastroChecklist() {
       return;
     }
     
-    // Agora o Payload envia id_setor (número inteiro) em vez de 'setor' em texto
     const payloadPrincipal = {
       titulo,
       id_setor: Number(idSetor),
@@ -114,7 +143,10 @@ export default function CadastroChecklist() {
     try {
       const resposta = await fetchWithAuth('/api/checklists', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-setor-usuario': getAdminHeader()
+        },
         body: JSON.stringify(payloadPrincipal)
       });
 
@@ -131,6 +163,7 @@ export default function CadastroChecklist() {
               formDataImagem.append('imagem', itemAtual.imagem);
               await fetchWithAuth(`/api/checklists/itens/${itemSalvoCorrespondente.id_item}/referencia`, {
                 method: 'POST',
+                headers: { 'x-setor-usuario': getAdminHeader() },
                 body: formDataImagem
               });
             }
@@ -155,6 +188,7 @@ export default function CadastroChecklist() {
         
         <form onSubmit={handleCadastro} className="checklist-form-container">
           <div className="dados-principais">
+            
             <div className="input-group">
               <label htmlFor="titulo">Título do Checklist</label>
               <input
@@ -167,31 +201,90 @@ export default function CadastroChecklist() {
               />
             </div>
 
+            {/* SELETOR DE SETOR COM SANFONA */}
             <div className="input-group">
-              <label htmlFor="setor">Setor Responsável</label>
-              <select
-                id="setor"
-                value={idSetor}
-                onChange={(e) => setIdSetor(e.target.value)}
-                required
-              >
-                <option value="" disabled>Selecione um setor...</option>
-                {setoresDisponiveis.map(setor => (
-                  <option key={setor.id_setor} value={setor.id_setor}>
-                    {setor.nomeExibicao}
-                  </option>
-                ))}
-              </select>
+              <label>Setor Responsável</label>
+              
+              <input
+                type="text"
+                placeholder="🔍 Pesquisar setor..."
+                value={buscaSetor}
+                onChange={(e) => setBuscaSetor(e.target.value)}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '10px', fontSize: '0.95rem', boxSizing: 'border-box' }}
+              />
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#f8fafc', maxHeight: '300px', overflowY: 'auto' }}>
+                {Object.keys(setoresAgrupados).length > 0 ? (
+                  Object.entries(setoresAgrupados).map(([nomePai, listaSetores]) => {
+                    const pai = listaSetores.find(s => s.nomeExibicao === nomePai);
+                    const filhos = listaSetores.filter(s => s.nomeExibicao !== nomePai);
+                    const isExpandido = gruposExpandidos[nomePai] || buscaSetor.length > 0;
+
+                    return (
+                      <div key={nomePai} style={{ flexShrink: 0, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', backgroundColor: 'white' }}>
+                        
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '8px 12px' }}>
+                          {pai ? (
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold', color: '#334155', flex: 1 }}>
+                              <input
+                                type="radio"
+                                name="setorSelecionado"
+                                value={pai.id_setor}
+                                checked={String(idSetor) === String(pai.id_setor)}
+                                onChange={(e) => setIdSetor(e.target.value)}
+                                style={{ width: '18px', height: '18px', cursor: 'pointer', flexShrink: 0 }}
+                              />
+                              {pai.nomeExibicao}
+                            </label>
+                          ) : (
+                            <span style={{ fontWeight: 'bold', color: '#334155', flex: 1 }}>{nomePai}</span>
+                          )}
+
+                          {filhos.length > 0 && (
+                            <button 
+                              type="button"
+                              onClick={() => toggleGrupo(nomePai)}
+                              style={{ background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.8rem', color: '#0284c7', fontWeight: 'bold' }}
+                            >
+                              {isExpandido ? '▲ Ocultar' : '▼ Ver subsetores'}
+                            </button>
+                          )}
+                        </div>
+
+                        {isExpandido && filhos.length > 0 && (
+                          <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid #cbd5e1' }}>
+                            {filhos.map(filho => (
+                              <label key={filho.id_setor} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'normal', color: '#555', paddingLeft: '24px' }}>
+                                <input
+                                  type="radio"
+                                  name="setorSelecionado"
+                                  value={filho.id_setor}
+                                  checked={String(idSetor) === String(filho.id_setor)}
+                                  onChange={(e) => setIdSetor(e.target.value)}
+                                  style={{ width: '18px', height: '18px', cursor: 'pointer', flexShrink: 0 }}
+                                />
+                                {filho.nomeExibicao.replace(`${nomePai} > `, '↳ ')} 
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <span style={{ fontSize: '0.9rem', color: '#888', textAlign: 'center', padding: '10px 0' }}>Nenhum setor encontrado.</span>
+                )}
+              </div>
             </div>
 
-            <div className="checkbox-group">
+            <div className="checkbox-group" style={{ marginTop: '1rem' }}>
               <input
                 type="checkbox"
                 id="ativo"
                 checked={ativo}
                 onChange={(e) => setAtivo(e.target.checked)}
               />
-              <label htmlFor="ativo">Checklist Ativo</label>
+              <label htmlFor="ativo" style={{ fontWeight: 'bold' }}>Checklist Ativo</label>
             </div>
           </div>
 
@@ -273,7 +366,7 @@ export default function CadastroChecklist() {
                           novosItens[index].preview = null;
                           setItens(novosItens);
                         }}
-                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem' }}
+                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
                       >
                         Remover
                       </button>
