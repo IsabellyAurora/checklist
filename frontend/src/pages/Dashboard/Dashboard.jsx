@@ -12,14 +12,19 @@ import './Dashboard.css';
 // ======================================================
 
 const GraficoRanking = ({ data }) => {
+  // Blindagem: Garante que o total seja lido como número
+  const dadosFormatados = Array.isArray(data) ? data.map(item => ({
+    ...item,
+    total: Number(item.total) || 0
+  })) : [];
+
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 25 }}>
+      <BarChart data={dadosFormatados} margin={{ top: 20, right: 30, left: 0, bottom: 25 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
         <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748b' }} angle={-15} textAnchor="end" />
         <YAxis tick={{ fontSize: 12, fill: '#64748b' }} allowDecimals={false} />
         <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
-        {/* isAnimationActive={false} previne o bug do startTime no Recharts */}
         <Bar dataKey="total" name="Total de NCs" fill="#dc2626" radius={[4, 4, 0, 0]} isAnimationActive={false} />
       </BarChart>
     </ResponsiveContainer>
@@ -27,6 +32,12 @@ const GraficoRanking = ({ data }) => {
 };
 
 const GraficoTempo = ({ data }) => {
+  // Blindagem: Garante que os segundos sejam lidos como números
+  const dadosFormatados = Array.isArray(data) ? data.map(item => ({
+    ...item,
+    tempo_medio_segundos: Number(item.tempo_medio_segundos) || 0
+  })) : [];
+
   const formatarSegundosParaLegivel = (segundos) => {
     if (!segundos) return '0m';
     const h = Math.floor(segundos / 3600);
@@ -49,7 +60,7 @@ const GraficoTempo = ({ data }) => {
 
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 25 }}>
+      <BarChart data={dadosFormatados} margin={{ top: 20, right: 30, left: 0, bottom: 25 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
         <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748b' }} angle={-15} textAnchor="end" />
         <YAxis tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(val) => `${Math.floor(val/3600)}h`} />
@@ -70,6 +81,7 @@ const GraficoEvolucao = ({ data }) => {
     return `${dia}/${mes} ${hora}h`;
   };
 
+  // Blindagem: Garante que as medições sejam números
   const dadosFormatados = Array.isArray(data) ? data.map(item => ({
     ...item,
     data_formatada: formatarDataCurta(item.data_medicao),
@@ -97,13 +109,28 @@ const GraficoCategorico = ({ data }) => {
     return '#0284c7'; 
   };
 
-  const dataValidada = Array.isArray(data) ? data : [];
+  // Blindagem: Garante que o total seja um número, senão o PieChart não renderiza
+  const dadosFormatados = Array.isArray(data) ? data.map(item => ({
+    ...item,
+    total: Number(item.total) || 0
+  })) : [];
 
   return (
     <ResponsiveContainer width="100%" height={300}>
       <PieChart>
-        <Pie data={dataValidada} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="total" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} isAnimationActive={false}>
-          {dataValidada.map((entry, index) => (
+        <Pie 
+          data={dadosFormatados} 
+          cx="50%" 
+          cy="50%" 
+          innerRadius={60} 
+          outerRadius={90} 
+          paddingAngle={5} 
+          dataKey="total" 
+          nameKey="name" /* Garante que ele sabe onde ler o nome */
+          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} 
+          isAnimationActive={false}
+        >
+          {dadosFormatados.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={getColor(entry.name)} />
           ))}
         </Pie>
@@ -143,7 +170,6 @@ export default function Dashboard() {
       const resRanking = await fetchWithAuth('/api/dashboard/ncs-por-checklist');
       if (resRanking.ok) {
         const json = await resRanking.json();
-        // Garante que se vier vazio ou der erro, assume um array vazio
         setRankingNcs(Array.isArray(json.data) ? json.data : []);
       }
 
@@ -198,7 +224,6 @@ export default function Dashboard() {
     const itemObj = itensDisponiveis.find(i => String(i.id_item) === String(idItem));
     if (!itemObj) return;
 
-    // Converte o tipo do sistema para o tipo esperado pela rota Swagger
     const tipoFiltro = itemObj.tipo === 'numero' ? 'NUMERICO' : 'CATEGORICO';
     setTipoGraficoAnalise(tipoFiltro);
     setLoadingAnalise(true);
@@ -207,7 +232,6 @@ export default function Dashboard() {
       const res = await fetchWithAuth(`/api/dashboard/analise-item?idItem=${idItem}&tipo=${tipoFiltro}`);
       if (res.ok) {
         const json = await res.json();
-        // Extrai a resposta baseada na estrutura do Swagger
         const arrayResult = Array.isArray(json.data) ? json.data : [];
         setDadosAnalise(arrayResult);
       } else {
