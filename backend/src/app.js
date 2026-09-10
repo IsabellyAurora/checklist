@@ -10,6 +10,7 @@ const userRoutes = require('./routes/userRoutes');
 const checklistRoutes = require('./routes/checklistRoutes');
 const execucaoRoutes = require('./routes/execucaoRoutes');
 const setorRoutes = require('./routes/setorRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 const errorHandler = require('./middlewares/errorHandler');
 
 const app = express();
@@ -37,5 +38,6 @@ app.use(errorHandler);
 app.use('/api', checklistRoutes);
 app.use('/api', execucaoRoutes);
 app.use('/api', setorRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 module.exports = app;

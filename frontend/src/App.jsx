@@ -12,6 +12,7 @@ import GerenciarUsuarios from './pages/GerenciarUsuarios/GerenciarUsuarios';
 import Header from './components/Header';
 import HistoricoChecklist from './pages/HistoricoChecklist/HistoricoChecklist';
 import HistoricoNCs from './pages/HistoricoNCs/HistoricoNCs';
+import Dashboard from './pages/Dashboard/Dashboard';
 import './App.css';
 import { DeviceProvider } from './contexts/DeviceContext';
 
@@ -35,6 +36,7 @@ function App() {
           <Route path="/gerenciar-usuarios" element={<GerenciarUsuarios />} />
           <Route path="/checklists/historico/:id" element={<HistoricoChecklist />} />
           <Route path="/historico-ncs" element={<HistoricoNCs />} />
+          <Route path="/dashboard" element={<Dashboard />} />
         </Routes>
       </DeviceProvider>
     </BrowserRouter>

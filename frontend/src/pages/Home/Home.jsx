@@ -229,8 +229,11 @@ export default function Home() {
             <p>Escolha uma das ações abaixo para gerenciar o sistema:</p>
             
             <div className="admin-actions">
-             <button className="primary-button" onClick={() => navigate('/cadastro-usuario')}>Cadastrar Novo Usuário</button>
-             <button className="primary-button" onClick={() => navigate('/gerenciar-usuarios')}>Gerenciar Usuários (Resetar Senha)</button>
+              {/* NOVO BOTÃO DE DASHBOARD ADICIONADO AQUI */}
+              <button className="primary-button" onClick={() => navigate('/dashboard')} style={{ backgroundColor: '#D67F0D' }}> Dashboard Analítico</button>
+              
+              <button className="primary-button" onClick={() => navigate('/cadastro-usuario')}>Cadastrar Novo Usuário</button>
+              <button className="primary-button" onClick={() => navigate('/gerenciar-usuarios')}>Gerenciar Usuários (Resetar Senha)</button>
               <button className="primary-button" onClick={() => navigate('/cadastro-checklist')}>Criar Novo Checklist</button>
               <button className="primary-button" onClick={() => navigate('/relatorios')}>Ver Relatórios</button>
               <button className="primary-button" onClick={() => navigate('/gerenciar-checklists')}>Gerenciar Checklists</button>

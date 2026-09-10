@@ -1,0 +1,146 @@
+.dashboard-container {
+  padding: 1.5rem;
+  background-color: #f1f5f9;
+  min-height: 100vh;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.dashboard-header h2 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 1.8rem;
+}
+
+.btn-voltar-dash {
+  background-color: #D67F0D;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-weight: bold;
+  color: #f3f7fd;
+  transition: 0.2s;
+}
+
+.btn-voltar-dash:hover {
+  background-color: #e2e8f0;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.dash-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
+  overflow: hidden; /* Evita quebra de layout de gráficos não contidos */
+}
+
+.dash-card.full-width {
+  grid-column: 1 / -1; /* Força ocupar a linha inteira quando estiver embaixo */
+}
+
+.dash-card h3 {
+  margin: 0 0 0.2rem 0;
+  color: #0f172a;
+  font-size: 1.1rem;
+}
+
+.dash-subtitle {
+  margin: 0 0 1.5rem 0;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.dash-empty {
+  text-align: center;
+  color: #94a3b8;
+  font-style: italic;
+  padding: 2rem 0;
+}
+
+.filtros-dinamicos {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap; /* Em celulares, os selects vão para baixo um do outro */
+}
+
+.select-dash {
+  flex: 1;
+  min-width: 250px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  font-size: 0.95rem;
+  color: #334155;
+  background-color: white;
+}
+
+.select-dash:disabled {
+  background-color: #f8fafc;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.area-grafico-dinamico {
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinner {
+  color: #0284c7;
+  font-weight: bold;
+  animation: pulse 1.5s infinite;
+}
+
+/* Skeletons de Loading */
+.skeleton-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.skeleton-card {
+  height: 380px;
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 400% 100%;
+  border-radius: 12px;
+  animation: loadingSkeleton 1.5s infinite ease-in-out;
+}
+
+@keyframes loadingSkeleton {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 1rem;
+  }
+  
+  .dashboard-header h2 {
+    font-size: 1.4rem;
+  }
+}
