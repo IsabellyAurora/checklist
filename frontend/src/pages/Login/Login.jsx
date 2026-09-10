@@ -44,7 +44,8 @@ export default function Login() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include', 
-        body: JSON.stringify({ nome: usuario, senha })
+        // Aplicando o trim() no nome de usuário para limpar espaços em branco
+        body: JSON.stringify({ nome: usuario.trim(), senha })
       });
 
       if (resposta.ok) {

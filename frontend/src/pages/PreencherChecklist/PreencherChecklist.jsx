@@ -501,7 +501,7 @@ export default function PreencherChecklist() {
             
             <div className="campo-os" style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
               <label htmlFor="input-os" style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.5rem', color: '#374151' }}>
-                Número da OS (Ordem de Serviço): <span className="asterisco">*</span>
+                Número da OS (Ordem de Serviço): <span className="asterisco"></span>
               </label>
               <input
                 type="text"
@@ -510,7 +510,6 @@ export default function PreencherChecklist() {
                 placeholder="Ex: OS-12345"
                 value={ordemServico}
                 onChange={(e) => setOrdemServico(e.target.value)}
-                required
               />
             </div>
 
