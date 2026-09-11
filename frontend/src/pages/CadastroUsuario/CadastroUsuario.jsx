@@ -155,9 +155,10 @@ export default function CadastroUsuario() {
     }
 
     try {
+      // ⚠️ MUDANÇA IMPORTANTE: Envia null para o backend se não houver id_setor_pai
       const payload = {
         nome: modalSetor.nome,
-        id_setor_pai: modalSetor.id_setor_pai ? Number(modalSetor.id_setor_pai) : 0
+        id_setor_pai: modalSetor.id_setor_pai ? Number(modalSetor.id_setor_pai) : null
       };
 
       const url = modalSetor.isEdicao ? `/api/setores/${modalSetor.id_setor}` : '/api/setores';
@@ -322,7 +323,7 @@ export default function CadastroUsuario() {
       </div>
 
       {/* ========================================================= */}
-      {/* MODAL PARA CRIAR/EDITAR SETOR (AGORA COM SANFONA) */}
+      {/* MODAL PARA CRIAR/EDITAR SETOR */}
       {/* ========================================================= */}
       {modalSetor.visivel && (
         <div className="modal-overlay">
@@ -355,6 +356,23 @@ export default function CadastroUsuario() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#f8fafc', maxHeight: '220px', overflowY: 'auto', flexShrink: 0, WebkitOverflowScrolling: 'touch' }}>
                 
+                {/* 🌟 MUDANÇA: OPÇÃO DE SETOR PRINCIPAL DISCRETA */}
+                <div style={{ flexShrink: 0, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', backgroundColor: 'white' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '10px 12px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold', color: '#334155', fontSize: '0.85rem', flex: 1, margin: 0 }}>
+                      <input 
+                        type="radio" 
+                        name="setorPaiModal" 
+                        value="" 
+                        checked={modalSetor.id_setor_pai === '' || modalSetor.id_setor_pai === null} 
+                        onChange={() => setModalSetor({ ...modalSetor, id_setor_pai: '' })} 
+                        style={{ width: '15px', height: '15px', cursor: 'pointer', flexShrink: 0, margin: 0 }} 
+                      />
+                      Nenhum (Criar como Setor Principal)
+                    </label>
+                  </div>
+                </div>
+
                 {/* SANFONA DOS SETORES EXISTENTES */}
                 {Object.keys(setoresAgrupadosPai).length > 0 ? (
                   Object.entries(setoresAgrupadosPai).map(([nomePai, listaSetores]) => {
@@ -410,7 +428,7 @@ export default function CadastroUsuario() {
                   })
                 ) : (
                   <span style={{ fontSize: '0.85rem', color: '#888', textAlign: 'center', padding: '10px 0' }}>
-                    Nenhum setor encontrado.
+                    Apenas os setores acima foram encontrados.
                   </span>
                 )}
               </div>

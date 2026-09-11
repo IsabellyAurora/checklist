@@ -169,7 +169,9 @@ export default function HistoricoChecklist() {
           </div>
         )}
 
-        {/* Modal de Visualização dos Itens da Versão */}
+        {/* ======================================================= */}
+        {/* MODAL DE VISUALIZAÇÃO DE ITENS                          */}
+        {/* ======================================================= */}
         {detalheVersao && (
           <div className="modal-overlay">
             <div className="modal-content" style={{ maxWidth: '600px', width: '90%', textAlign: 'left', maxHeight: '80vh', overflowY: 'auto' }}>
@@ -178,42 +180,58 @@ export default function HistoricoChecklist() {
                 <button onClick={() => setDetalheVersao(null)} className="btn-fechar-modal">✕</button>
               </div>
               
-              <p><strong>Título:</strong> {detalheVersao.titulo}</p>
+              <div style={{ fontSize: '0.9rem', color: '#334155', marginBottom: '15px' }}>
+                <p style={{ margin: '4px 0' }}><strong>Título:</strong> {detalheVersao.titulo}</p>
+                <p style={{ margin: '4px 0' }}><strong>Setor:</strong> {getNomeSetor(detalheVersao.id_setor || detalheVersao.setor)}</p>
+                <p style={{ margin: '4px 0' }}><strong>Criado em:</strong> {formatarData(detalheVersao.data_criacao)}</p>
+              </div>
               
-              {/* Exibindo o nome formatado no modal */}
-              <p><strong>Setor:</strong> {getNomeSetor(detalheVersao.id_setor || detalheVersao.setor)}</p>
+              <h4 style={{ marginTop: '15px', color: '#1e293b', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>Perguntas (Status na época):</h4>
               
-              <p><strong>Criado em:</strong> {formatarData(detalheVersao.data_criacao)}</p>
-              
-              <h4 style={{ marginTop: '15px', color: '#334155' }}>Perguntas (Status na época):</h4>
-              <ul className="historico-lista-itens">
+              <ul className="historico-lista-itens" style={{ paddingLeft: '0', listStyleType: 'none' }}>
                 {detalheVersao.itens && detalheVersao.itens.length > 0 ? (
                   detalheVersao.itens.map((item, idx) => {
                     const refUrl = item.imagem_url || item.imagem_referencia;
 
                     return (
-                      <li key={item.id_item || idx} style={{ marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                        <div>
+                      <li key={item.id_item || idx} style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                        
+                        {/* FONTE REDUZIDA E PADRONIZADA (0.9rem) */}
+                        <div style={{ fontSize: '0.9rem', color: '#334155' }}>
                           <strong>{item.ordem}.</strong> {item.descricao} 
-                          <em style={{ color: '#64748b' }}> ({item.tipo}) {item.obrigatorio ? ' - *Obrigatório' : ''}</em>
+                          <em style={{ color: '#64748b', fontSize: '0.85rem', marginLeft: '6px' }}>
+                            ({item.tipo}) {item.obrigatorio ? ' - *Obrigatório' : ''}
+                          </em>
                         </div>
+                        
+                        {/* IMAGEM APARECENDO INTEIRA (contain) COM TAMANHO MAIOR */}
                         {refUrl && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingLeft: '15px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+                            <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 'bold' }}>📷 Foto de referência:</span>
                             <img 
                               src={refUrl} 
                               alt="Referência" 
                               onClick={() => setImagemAmpliada(refUrl)}
-                              style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '1px solid #cbd5e1' }}
+                              style={{ 
+                                width: '120px', 
+                                height: 'auto', 
+                                maxHeight: '120px', 
+                                objectFit: 'contain', // A mágica acontece aqui (não corta a imagem)
+                                borderRadius: '6px', 
+                                cursor: 'pointer', 
+                                border: '1px solid #cbd5e1',
+                                backgroundColor: '#ffffff', // Fundo branco caso a imagem seja png transparente
+                                padding: '2px'
+                              }}
                               title="Clique para ampliar"
                             />
-                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Foto de referência</span>
                           </div>
                         )}
                       </li>
                     );
                   })
                 ) : (
-                  <p>Nenhum item registrado nesta versão.</p>
+                  <p style={{ fontSize: '0.9rem', color: '#64748b' }}>Nenhum item registrado nesta versão.</p>
                 )}
               </ul>
 

@@ -379,7 +379,7 @@ export default function Relatorios() {
                         )}
                       </div>
 
-                      {/* Exibição lado a lado: Imagem de Referência e Imagem de Evidência */}
+                      {/* Exibição lado a lado: Imagem de Referência e Imagem de Evidência com contain */}
                       <div style={{ display: 'flex', gap: '2rem', marginTop: '1rem', flexWrap: 'wrap' }}>
                         
                         {/* Imagem de Referência (Do Checklist Original) */}
@@ -394,8 +394,8 @@ export default function Relatorios() {
                               title="Clique para ampliar"
                               onClick={() => setImagemAmpliada(resp.imagem_referencia_original)}
                               style={{ 
-                                width: '120px', height: '120px', objectFit: 'cover', 
-                                borderRadius: '6px', border: '2px solid #cbd5e1', 
+                                width: '120px', height: 'auto', maxHeight: '120px', objectFit: 'contain', 
+                                borderRadius: '6px', border: '2px solid #cbd5e1', backgroundColor: '#ffffff', padding: '2px',
                                 cursor: 'pointer', transition: 'transform 0.2s' 
                               }}
                               onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
@@ -416,8 +416,8 @@ export default function Relatorios() {
                               title="Clique para ampliar"
                               onClick={() => setImagemAmpliada(resp.imagem_evidencia)}
                               style={{ 
-                                width: '120px', height: '120px', objectFit: 'cover', 
-                                borderRadius: '6px', border: '2px solid #0284c7', 
+                                width: '120px', height: 'auto', maxHeight: '120px', objectFit: 'contain', 
+                                borderRadius: '6px', border: '2px solid #0284c7', backgroundColor: '#ffffff', padding: '2px',
                                 cursor: 'pointer', transition: 'transform 0.2s' 
                               }}
                               onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}

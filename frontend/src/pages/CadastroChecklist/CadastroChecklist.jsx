@@ -334,8 +334,8 @@ export default function CadastroChecklist() {
                   </button>
                 </div>
 
-                <div className="upload-item-container" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem', paddingLeft: '1.8rem' }}>
-                  <label htmlFor={`file-input-${index}`} style={{ cursor: 'pointer', backgroundColor: '#e2e8f0', padding: '0.4rem 0.8rem', borderRadius: '4px', fontSize: '0.85rem', fontWeight: '500', color: '#334155' }}>
+                <div className="upload-item-container" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '0.5rem', paddingLeft: '1.8rem' }}>
+                  <label htmlFor={`file-input-${index}`} style={{ cursor: 'pointer', alignSelf: 'flex-start', backgroundColor: '#e2e8f0', padding: '0.4rem 0.8rem', borderRadius: '4px', fontSize: '0.85rem', fontWeight: '500', color: '#334155' }}>
                     📷 {item.imagem ? 'Trocar Imagem' : 'Adicionar Imagem de Referência'}
                   </label>
                   <input
@@ -346,30 +346,44 @@ export default function CadastroChecklist() {
                     style={{ display: 'none' }}
                   />
 
+                  {/* IMAGEM APARECENDO INTEIRA (CONTAIN) */}
                   {item.preview && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.8rem', marginTop: '0.5rem' }}>
                       <img 
                         src={item.preview} 
                         alt="Preview" 
                         title="Clique para ampliar"
                         onClick={() => setImagemAmpliada(item.preview)}
-                        style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #cbd5e1', cursor: 'pointer', transition: 'transform 0.2s' }} 
+                        style={{ 
+                          width: '120px', 
+                          height: 'auto', 
+                          maxHeight: '120px', 
+                          objectFit: 'contain', 
+                          borderRadius: '6px', 
+                          border: '1px solid #cbd5e1', 
+                          backgroundColor: '#ffffff',
+                          padding: '2px',
+                          cursor: 'pointer', 
+                          transition: 'transform 0.2s' 
+                        }} 
                         onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
                         onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
                       />
-                      <span style={{ fontSize: '0.8rem', color: '#64748b' }}>{item.imagem?.name}</span>
-                      <button 
-                        type="button" 
-                        onClick={() => {
-                          const novosItens = [...itens];
-                          novosItens[index].imagem = null;
-                          novosItens[index].preview = null;
-                          setItens(novosItens);
-                        }}
-                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
-                      >
-                        Remover
-                      </button>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <span style={{ fontSize: '0.8rem', color: '#64748b' }}>{item.imagem?.name}</span>
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            const novosItens = [...itens];
+                            novosItens[index].imagem = null;
+                            novosItens[index].preview = null;
+                            setItens(novosItens);
+                          }}
+                          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold', padding: '0', textAlign: 'left' }}
+                        >
+                          Remover
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>

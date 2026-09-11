@@ -35,7 +35,6 @@ export default function PreencherChecklist() {
   const [nomesSetores, setNomesSetores] = useState([]);
   const [todosSetores, setTodosSetores] = useState([]); 
   
-  // NOVO: Estado para controlar a expansão dos subsetores bonitos na tela
   const [mostrarSubsetores, setMostrarSubsetores] = useState(false);
 
   const navigate = useNavigate();
@@ -411,9 +410,6 @@ export default function PreencherChecklist() {
       <div className="preencher-card" style={{ maxWidth: '900px' }}>
         <h2>Preencher Checklist</h2>
         
-        {/* ======================================================= */}
-        {/* VISUAL BONITO DE SETORES COM CHIPS E BOTÃO EXPANSÍVEL   */}
-        {/* ======================================================= */}
         <div style={{ marginBottom: '1.5rem', backgroundColor: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0', textAlign: 'left' }}>
           <p style={{ margin: '0 0 10px 0', color: '#475569', fontSize: '0.9rem', fontWeight: 'bold' }}>Seus Setores Ativos:</p>
           
@@ -520,25 +516,32 @@ export default function PreencherChecklist() {
 
                   return (
                     <div key={item.id_item} className="pergunta-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '1rem', backgroundColor: '#fff' }}>
-                      <p className="pergunta-texto">
+                      <p className="pergunta-texto" style={{ fontSize: '0.95rem' }}>
                         <strong>{item.ordem}.</strong> {item.descricao} 
                         {item.obrigatorio && <span className="asterisco"> *</span>}
                       </p>
 
+                      {/* IMAGEM DE REFERÊNCIA APARECENDO INTEIRA (contain) */}
                       {urlReferencia && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+                          <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 'bold' }}>📋 Foto Padrão (Referência):</span>
                           <img 
                             src={urlReferencia} 
                             alt="Referência do Item" 
                             title="Clique para ampliar"
                             onClick={() => setImagemAmpliada(urlReferencia)}
-                            style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #cbd5e1', cursor: 'pointer' }}
+                            style={{ 
+                              width: '120px', height: 'auto', maxHeight: '120px', objectFit: 'contain', 
+                              borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff',
+                              padding: '2px', cursor: 'pointer', transition: 'transform 0.2s' 
+                            }}
+                            onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+                            onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
                           />
-                          <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Referência do Item</span>
                         </div>
                       )}
 
-                      <div className="resposta-area" style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                      <div className="resposta-area" style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '0.5rem' }}>
                         {item.tipo === 'booleano' && (
                           <select
                             required={item.obrigatorio}
@@ -569,7 +572,7 @@ export default function PreencherChecklist() {
                             type="number"
                             required={item.obrigatorio}
                             className="input-padrao"
-                            placeholder="Digite um valor"
+                            placeholder="Digite um valor numérico"
                             value={respostas[item.id_item]?.valor_resposta || ''}
                             onChange={(e) => handleRespostaChange(item.id_item, 'valor_resposta', e.target.value)}
                           />
@@ -583,62 +586,73 @@ export default function PreencherChecklist() {
                           onChange={(e) => handleRespostaChange(item.id_item, 'observacao', e.target.value)}
                         />
 
-                        <div className="evidencia-container" style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginTop: '0.3rem', borderTop: '1px dashed #e2e8f0', paddingTop: '0.8rem' }}>
+                        <div className="evidencia-container" style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', flexDirection: 'column', marginTop: '0.3rem', borderTop: '1px dashed #e2e8f0', paddingTop: '0.8rem' }}>
                           
-                          <label 
-                            htmlFor={`camera-input-${item.id_item}`} 
-                            onClick={salvarPosicaoScroll}
-                            style={{ cursor: 'pointer', backgroundColor: '#0284c7', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '4px', fontSize: '0.85rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                            📸 Tirar Foto
-                          </label>
-                          <input
-                            id={`camera-input-${item.id_item}`}
-                            type="file"
-                            accept="image/*"
-                            capture="environment"
-                            onChange={(e) => handleFotoItemChange(item.id_item, e)}
-                            style={{ display: 'none' }}
-                          />
+                          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                            <label 
+                              htmlFor={`camera-input-${item.id_item}`} 
+                              onClick={salvarPosicaoScroll}
+                              style={{ cursor: 'pointer', backgroundColor: '#0284c7', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '4px', fontSize: '0.85rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                              📸 Tirar Foto
+                            </label>
+                            <input
+                              id={`camera-input-${item.id_item}`}
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              onChange={(e) => handleFotoItemChange(item.id_item, e)}
+                              style={{ display: 'none' }}
+                            />
 
-                          <label 
-                            htmlFor={`galeria-input-${item.id_item}`} 
-                            onClick={salvarPosicaoScroll}
-                            style={{ cursor: 'pointer', backgroundColor: '#64748b', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '4px', fontSize: '0.85rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                            📁 Escolher da Galeria
-                          </label>
-                          <input
-                            id={`galeria-input-${item.id_item}`}
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => handleFotoItemChange(item.id_item, e)}
-                            style={{ display: 'none' }}
-                          />
+                            <label 
+                              htmlFor={`galeria-input-${item.id_item}`} 
+                              onClick={salvarPosicaoScroll}
+                              style={{ cursor: 'pointer', backgroundColor: '#64748b', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '4px', fontSize: '0.85rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                              📁 Escolher da Galeria
+                            </label>
+                            <input
+                              id={`galeria-input-${item.id_item}`}
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handleFotoItemChange(item.id_item, e)}
+                              style={{ display: 'none' }}
+                            />
+                          </div>
 
+                          {/* IMAGEM DA EVIDÊNCIA DO OPERADOR (contain) */}
                           {respostas[item.id_item]?.fotoBase64 && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#f1f5f9', padding: '0.3rem 0.6rem', borderRadius: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.8rem', marginTop: '0.5rem' }}>
                               <img 
                                 src={respostas[item.id_item].fotoBase64} 
                                 alt="Evidência" 
                                 title="Clique para ampliar"
                                 onClick={() => setImagemAmpliada(respostas[item.id_item].fotoBase64)}
-                                style={{ width: '35px', height: '35px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '1px solid #cbd5e1' }}
-                              />
-                              <span style={{ fontSize: '0.8rem', color: '#334155', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {respostas[item.id_item].fotoNome}
-                              </span>
-                              <button 
-                                type="button" 
-                                onClick={() => {
-                                  setRespostas(prev => ({
-                                    ...prev,
-                                    [item.id_item]: { ...prev[item.id_item], fotoBase64: null, fotoNome: '' }
-                                  }));
+                                style={{ 
+                                  width: '120px', height: 'auto', maxHeight: '120px', objectFit: 'contain', 
+                                  borderRadius: '6px', border: '2px solid #0284c7', backgroundColor: '#ffffff',
+                                  padding: '2px', cursor: 'pointer', transition: 'transform 0.2s' 
                                 }}
-                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
-                                title="Remover foto"
-                              >
-                                ✕
-                              </button>
+                                onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+                                onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+                              />
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <span style={{ fontSize: '0.8rem', color: '#64748b', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {respostas[item.id_item].fotoNome}
+                                </span>
+                                <button 
+                                  type="button" 
+                                  onClick={() => {
+                                    setRespostas(prev => ({
+                                      ...prev,
+                                      [item.id_item]: { ...prev[item.id_item], fotoBase64: null, fotoNome: '' }
+                                    }));
+                                  }}
+                                  style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem', padding: '0', textAlign: 'left' }}
+                                  title="Remover foto"
+                                >
+                                  Remover Foto
+                                </button>
+                              </div>
                             </div>
                           )}
 
@@ -721,4 +735,4 @@ export default function PreencherChecklist() {
       )}
     </div>
   );
-}
+}q

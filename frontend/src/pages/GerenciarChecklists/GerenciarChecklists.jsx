@@ -369,9 +369,6 @@ export default function GerenciarChecklists() {
                   <input type="text" value={novoTitulo} onChange={(e) => setNovoTitulo(e.target.value)} className="input-editar-titulo" />
                 </div>
 
-                {/* ======================================================= */}
-                {/* SETOR (MUDADO DE SELECT PARA SANFONA INTERATIVA) */}
-                {/* ======================================================= */}
                 <div className="form-group-edicao">
                   <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Setor Responsável:</label>
                   
@@ -466,15 +463,42 @@ export default function GerenciarChecklists() {
                           </label>
                           <button type="button" onClick={() => handleRemoverItem(index)} className="btn-remover-item">✕</button>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingLeft: '25px', fontSize: '0.85rem' }}>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', paddingLeft: '25px', fontSize: '0.85rem', flexWrap: 'wrap' }}>
+                          
+                          {/* FOTO APARECENDO INTEIRA (contain) NO MODO DE EDIÇÃO */}
                           {fotoExibicao ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#f1f5f9', padding: '4px 8px', borderRadius: '4px' }}>
-                              <img src={fotoExibicao} alt="Ref" onClick={() => setImagemAmpliada(fotoExibicao)} style={{ width: '35px', height: '35px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '1px solid #cbd5e1' }} title="Clique para ampliar" />
-                              <span>Foto de referência ativa</span>
-                              <button type="button" onClick={() => { const atualizados = [...novosItens]; atualizados[index].imagem_url = ''; atualizados[index].novaFotoBase64 = null; atualizados[index].novaFotoArquivo = null; setNovosItens(atualizados); }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold' }} title="Remover foto">✕</button>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 'bold' }}>📷 Foto de referência ativa:</span>
+                              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+                                <img 
+                                  src={fotoExibicao} 
+                                  alt="Ref" 
+                                  onClick={() => setImagemAmpliada(fotoExibicao)} 
+                                  style={{ 
+                                    width: '120px', height: 'auto', maxHeight: '120px', objectFit: 'contain', 
+                                    borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff',
+                                    padding: '2px', cursor: 'pointer', transition: 'transform 0.2s' 
+                                  }} 
+                                  title="Clique para ampliar" 
+                                  onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+                                  onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+                                />
+                                <button 
+                                  type="button" 
+                                  onClick={() => { const atualizados = [...novosItens]; atualizados[index].imagem_url = ''; atualizados[index].novaFotoBase64 = null; atualizados[index].novaFotoArquivo = null; setNovosItens(atualizados); }} 
+                                  style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem', padding: 0 }} 
+                                  title="Remover foto"
+                                >
+                                  Remover
+                                </button>
+                              </div>
                             </div>
-                          ) : ( <span style={{ color: '#64748b', fontStyle: 'italic' }}>Sem foto de referência</span> )}
-                          <label htmlFor={`foto-ref-${index}`} style={{ cursor: 'pointer', backgroundColor: '#0284c7', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem' }}>
+                          ) : ( 
+                            <span style={{ color: '#64748b', fontStyle: 'italic' }}>Sem foto de referência</span> 
+                          )}
+                          
+                          <label htmlFor={`foto-ref-${index}`} style={{ cursor: 'pointer', backgroundColor: '#0284c7', color: 'white', padding: '6px 12px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 'bold', alignSelf: 'center' }}>
                             📷 {fotoExibicao ? 'Alterar Foto' : 'Adicionar Foto'}
                           </label>
                           <input id={`foto-ref-${index}`} type="file" accept="image/*" onChange={(e) => handleFotoItemChange(index, e)} style={{ display: 'none' }} />
@@ -498,16 +522,32 @@ export default function GerenciarChecklists() {
                 <div className="itens-lista">
                   <h4>Itens de Verificação:</h4>
                   {checklist.itens && checklist.itens.length > 0 ? (
-                    <ul>
+                    <ul style={{ paddingLeft: 0, listStyleType: 'none' }}>
                       {checklist.itens.map((item, index) => {
                         const refUrl = item.imagem_url || item.imagem_referencia;
                         return (
-                          <li key={item.id_item || index} style={{ marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                            <div><strong>{item.ordem}.</strong> {item.descricao} <em> ({item.tipo}) {item.obrigatorio && '*' }</em></div>
+                          <li key={item.id_item || index} style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                            <div>
+                              <strong>{item.ordem}.</strong> {item.descricao} 
+                              <em style={{ color: '#64748b' }}> ({item.tipo}) {item.obrigatorio && '*' }</em>
+                            </div>
+                            
+                            {/* FOTO APARECENDO INTEIRA (contain) NO MODO DE VISUALIZAÇÃO */}
                             {refUrl && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingLeft: '15px' }}>
-                                <img src={refUrl} alt="Referência" onClick={() => setImagemAmpliada(refUrl)} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '1px solid #cbd5e1' }} title="Clique para ampliar" />
-                                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Foto de referência</span>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+                                <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 'bold' }}>📷 Foto de referência:</span>
+                                <img 
+                                  src={refUrl} 
+                                  alt="Referência" 
+                                  onClick={() => setImagemAmpliada(refUrl)} 
+                                  style={{ 
+                                    width: '120px', height: 'auto', maxHeight: '120px', objectFit: 'contain', 
+                                    borderRadius: '6px', cursor: 'pointer', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', padding: '2px', transition: 'transform 0.2s'
+                                  }} 
+                                  title="Clique para ampliar" 
+                                  onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+                                  onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+                                />
                               </div>
                             )}
                           </li>
