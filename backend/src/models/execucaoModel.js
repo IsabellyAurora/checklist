@@ -1,24 +1,48 @@
 const pool = require('../config/db');
 
-const salvarExecucao = async (idChecklist, idUsuario, respostas, status_nc = 'SEM_NC', dataInicio, dataConclusao, ordemServico) => {
+const iniciarExecucao = async (idChecklist, idUsuario) => {
+  // Busca se há execução em andamento nas últimas 4 horas (evita travar por execuções zumbis antigas)
+  const emAndamento = await pool.query(
+    `SELECT id_execucao, id_usuario FROM execucao 
+     WHERE id_checklist = $1 
+     AND status = 'EM_ANDAMENTO'
+     AND data_inicio >= NOW() - INTERVAL '4 hours'`, 
+    [idChecklist]
+  );
+
+  if (emAndamento.rows.length > 0) {
+    const execAtual = emAndamento.rows[0];
+    
+    // Se o próprio usuário logado já tinha iniciado esse checklist, devolve o ID para ele continuar
+    if (execAtual.id_usuario === idUsuario) {
+      return execAtual.id_execucao;
+    }
+    
+    // Se foi outro usuário, bloqueia o acesso
+    throw new Error("Este checklist já está sendo executado por outro manutentor.");
+  }
+
+  // Se estiver livre, cria uma nova execução
+  const novaExecucao = await pool.query(
+    `INSERT INTO execucao (id_checklist, id_usuario, data_inicio, status) 
+     VALUES ($1, $2, CURRENT_TIMESTAMP, 'EM_ANDAMENTO') RETURNING id_execucao`,
+    [idChecklist, idUsuario]
+  );
+  
+  return novaExecucao.rows[0].id_execucao;
+};
+
+const finalizarExecucao = async (idExecucao, respostas, status_nc = 'SEM_NC', ordemServico) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    // ⚠️ ALTERAÇÃO AQUI: Adicionamos a coluna 'status' e forçamos o valor 'Concluído'
-    const resExecucao = await client.query(
-      `INSERT INTO execucao (id_checklist, id_usuario, status, status_nc, data_inicio, data_conclusao, ordem_servico) 
-       VALUES ($1, $2, 'Concluído', $3, $4, $5, $6) RETURNING id_execucao`,
-      [
-        idChecklist, 
-        idUsuario, 
-        status_nc, 
-        dataInicio || null, 
-        dataConclusao || null, 
-        ordemServico || null
-      ]
+    await client.query(
+      `UPDATE execucao 
+       SET status = 'CONCLUIDO', status_nc = $1, data_conclusao = CURRENT_TIMESTAMP, ordem_servico = $2 
+       WHERE id_execucao = $3`,
+      [status_nc, ordemServico || null, idExecucao]
     );
-    const idExecucao = resExecucao.rows[0].id_execucao;
 
     for (const resp of respostas) {
       await client.query(
@@ -37,7 +61,39 @@ const salvarExecucao = async (idChecklist, idUsuario, respostas, status_nc = 'SE
   }
 };
 
-// Adicionado JOIN para buscar s.nome AS checklist_setor
+// NOVO: Deleta a execução inacabada para limpar o banco e liberar a tarefa
+const cancelarExecucao = async (idExecucao, idUsuario) => {
+  const { rowCount } = await pool.query(
+    `DELETE FROM execucao WHERE id_execucao = $1 AND id_usuario = $2 AND status = 'EM_ANDAMENTO'`,
+    [idExecucao, idUsuario]
+  );
+  return rowCount > 0;
+};
+
+const listarHistoricoUsuario = async (idUsuario, limit = 20) => {
+  const query = `
+    SELECT 
+        e.id_execucao,
+        c.titulo,
+        e.data_inicio,
+        e.data_conclusao,
+        e.status,
+        e.status_nc
+    FROM 
+        execucao e
+    JOIN 
+        checklist c ON e.id_checklist = c.id_checklist
+    WHERE 
+        e.id_usuario = $1
+    ORDER BY 
+        e.data_inicio DESC
+    LIMIT $2;
+  `;
+  
+  const { rows } = await pool.query(query, [idUsuario, limit]);
+  return rows;
+};
+
 const listarExecucoes = async (page = 1, limit = 10, filtros = {}) => {
   const offset = (page - 1) * limit;
   const values = [];
@@ -53,9 +109,7 @@ const listarExecucoes = async (page = 1, limit = 10, filtros = {}) => {
     whereConditions.push(`e.data_conclusao BETWEEN $${values.length - 1} AND $${values.length}`);
   }
 
-// Filtragem dinâmica por array de setores do usuário
   if (filtros.setoresUsuario && filtros.setoresUsuario.length > 0) {
-    // Tenta converter os valores para números inteiros, descartando o que for texto (como "admin")
     const setoresIds = filtros.setoresUsuario.map(s => parseInt(s, 10)).filter(id => !isNaN(id));
     
     if (setoresIds.length > 0) {
@@ -94,7 +148,6 @@ const listarExecucoes = async (page = 1, limit = 10, filtros = {}) => {
   return { totalItems, totalPages: Math.ceil(totalItems / limit), currentPage: page, data: rows };
 };
 
-// Adicionado JOIN para buscar s.nome AS checklist_setor
 const buscarExecucaoPorId = async (idExecucao) => {
   const resExecucao = await pool.query(`
     SELECT 
@@ -132,7 +185,6 @@ const anexarEvidenciaNaResposta = async (idResposta, caminhoImagem) => {
   return rowCount > 0;
 };
 
-// Adicionado JOIN de forma segura para buscar as pendências
 const listarNCs = async (statusFiltro, setoresUsuario = []) => {
   let query = `
     SELECT 
@@ -159,7 +211,6 @@ const listarNCs = async (statusFiltro, setoresUsuario = []) => {
     query += ` AND e.status_nc = $${values.length}`;
   }
 
-  // Opcional: Filtra apenas pendências dos setores em que o Admin atua
   if (setoresUsuario && setoresUsuario.length > 0) {
     values.push(setoresUsuario);
     query += ` AND c.id_setor = ANY($${values.length}::int[])`;
@@ -186,10 +237,13 @@ const resolverNC = async (idExecucao, idAdmin, observacao) => {
 };
 
 module.exports = {
-  salvarExecucao,
+  iniciarExecucao,
+  finalizarExecucao,
+  cancelarExecucao,
+  listarHistoricoUsuario,
   listarExecucoes,
   buscarExecucaoPorId,
   anexarEvidenciaNaResposta,
-  resolverNC,
   listarNCs,
+  resolverNC
 };

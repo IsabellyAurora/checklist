@@ -2,12 +2,12 @@
 -- PostgreSQL database dump
 --
 
-\restrict JHnKB80frxh3GIlf7CK1iwDuUjYqsqZAAo0n6ARyv3SbQbQ2zqf0JKfkDKcLM8s
+\restrict QKYJnGn5TX8CVVfxB6en9LI1QSKrxqsEjOSSriWhPMQWFmIMnbNp1DmdgPtvZWg
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.4
 
--- Started on 2026-09-10 10:01:08
+-- Started on 2026-09-17 15:19:46
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -26,7 +26,7 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
--- TOC entry 222 (class 1259 OID 16413)
+-- TOC entry 219 (class 1259 OID 24671)
 -- Name: checklist; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -37,14 +37,17 @@ CREATE TABLE public.checklist (
     data_criacao timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     versao integer DEFAULT 1,
     id_checklist_origem integer,
-    id_setor integer
+    id_setor integer,
+    tipo_agendamento character varying(50) DEFAULT 'INTERVALO_DIAS'::character varying,
+    intervalo_dias integer,
+    data_especifica date
 );
 
 
 ALTER TABLE public.checklist OWNER TO postgres;
 
 --
--- TOC entry 221 (class 1259 OID 16412)
+-- TOC entry 220 (class 1259 OID 24679)
 -- Name: checklist_id_checklist_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -60,8 +63,8 @@ CREATE SEQUENCE public.checklist_id_checklist_seq
 ALTER SEQUENCE public.checklist_id_checklist_seq OWNER TO postgres;
 
 --
--- TOC entry 5044 (class 0 OID 0)
--- Dependencies: 221
+-- TOC entry 5047 (class 0 OID 0)
+-- Dependencies: 220
 -- Name: checklist_id_checklist_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
@@ -69,7 +72,7 @@ ALTER SEQUENCE public.checklist_id_checklist_seq OWNED BY public.checklist.id_ch
 
 
 --
--- TOC entry 226 (class 1259 OID 16444)
+-- TOC entry 221 (class 1259 OID 24680)
 -- Name: execucao; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -91,7 +94,7 @@ CREATE TABLE public.execucao (
 ALTER TABLE public.execucao OWNER TO postgres;
 
 --
--- TOC entry 225 (class 1259 OID 16443)
+-- TOC entry 222 (class 1259 OID 24690)
 -- Name: execucao_id_execucao_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -107,8 +110,8 @@ CREATE SEQUENCE public.execucao_id_execucao_seq
 ALTER SEQUENCE public.execucao_id_execucao_seq OWNER TO postgres;
 
 --
--- TOC entry 5045 (class 0 OID 0)
--- Dependencies: 225
+-- TOC entry 5048 (class 0 OID 0)
+-- Dependencies: 222
 -- Name: execucao_id_execucao_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
@@ -116,7 +119,7 @@ ALTER SEQUENCE public.execucao_id_execucao_seq OWNED BY public.execucao.id_execu
 
 
 --
--- TOC entry 224 (class 1259 OID 16424)
+-- TOC entry 223 (class 1259 OID 24691)
 -- Name: item; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -127,14 +130,16 @@ CREATE TABLE public.item (
     descricao text NOT NULL,
     tipo character varying(50) NOT NULL,
     obrigatorio boolean DEFAULT true,
-    imagem_referencia character varying(255)
+    imagem_referencia character varying(255),
+    etapa character varying(100) DEFAULT 'Inspeção Geral'::character varying,
+    ordem_etapa integer DEFAULT 1
 );
 
 
 ALTER TABLE public.item OWNER TO postgres;
 
 --
--- TOC entry 223 (class 1259 OID 16423)
+-- TOC entry 224 (class 1259 OID 24702)
 -- Name: item_id_item_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -150,8 +155,8 @@ CREATE SEQUENCE public.item_id_item_seq
 ALTER SEQUENCE public.item_id_item_seq OWNER TO postgres;
 
 --
--- TOC entry 5046 (class 0 OID 0)
--- Dependencies: 223
+-- TOC entry 5049 (class 0 OID 0)
+-- Dependencies: 224
 -- Name: item_id_item_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
@@ -159,7 +164,7 @@ ALTER SEQUENCE public.item_id_item_seq OWNED BY public.item.id_item;
 
 
 --
--- TOC entry 230 (class 1259 OID 24583)
+-- TOC entry 225 (class 1259 OID 24703)
 -- Name: log_auditoria; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -178,7 +183,7 @@ CREATE TABLE public.log_auditoria (
 ALTER TABLE public.log_auditoria OWNER TO postgres;
 
 --
--- TOC entry 229 (class 1259 OID 24582)
+-- TOC entry 226 (class 1259 OID 24714)
 -- Name: log_auditoria_id_log_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -194,8 +199,8 @@ CREATE SEQUENCE public.log_auditoria_id_log_seq
 ALTER SEQUENCE public.log_auditoria_id_log_seq OWNER TO postgres;
 
 --
--- TOC entry 5047 (class 0 OID 0)
--- Dependencies: 229
+-- TOC entry 5050 (class 0 OID 0)
+-- Dependencies: 226
 -- Name: log_auditoria_id_log_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
@@ -203,7 +208,7 @@ ALTER SEQUENCE public.log_auditoria_id_log_seq OWNED BY public.log_auditoria.id_
 
 
 --
--- TOC entry 228 (class 1259 OID 16466)
+-- TOC entry 227 (class 1259 OID 24715)
 -- Name: resposta; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -220,7 +225,7 @@ CREATE TABLE public.resposta (
 ALTER TABLE public.resposta OWNER TO postgres;
 
 --
--- TOC entry 227 (class 1259 OID 16465)
+-- TOC entry 228 (class 1259 OID 24723)
 -- Name: resposta_id_resposta_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -236,8 +241,8 @@ CREATE SEQUENCE public.resposta_id_resposta_seq
 ALTER SEQUENCE public.resposta_id_resposta_seq OWNER TO postgres;
 
 --
--- TOC entry 5048 (class 0 OID 0)
--- Dependencies: 227
+-- TOC entry 5051 (class 0 OID 0)
+-- Dependencies: 228
 -- Name: resposta_id_resposta_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
@@ -245,7 +250,7 @@ ALTER SEQUENCE public.resposta_id_resposta_seq OWNED BY public.resposta.id_respo
 
 
 --
--- TOC entry 232 (class 1259 OID 24611)
+-- TOC entry 229 (class 1259 OID 24724)
 -- Name: setor; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -259,7 +264,7 @@ CREATE TABLE public.setor (
 ALTER TABLE public.setor OWNER TO postgres;
 
 --
--- TOC entry 231 (class 1259 OID 24610)
+-- TOC entry 230 (class 1259 OID 24729)
 -- Name: setor_id_setor_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -275,8 +280,8 @@ CREATE SEQUENCE public.setor_id_setor_seq
 ALTER SEQUENCE public.setor_id_setor_seq OWNER TO postgres;
 
 --
--- TOC entry 5049 (class 0 OID 0)
--- Dependencies: 231
+-- TOC entry 5052 (class 0 OID 0)
+-- Dependencies: 230
 -- Name: setor_id_setor_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
@@ -284,7 +289,7 @@ ALTER SEQUENCE public.setor_id_setor_seq OWNED BY public.setor.id_setor;
 
 
 --
--- TOC entry 220 (class 1259 OID 16400)
+-- TOC entry 231 (class 1259 OID 24730)
 -- Name: usuario; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -302,7 +307,7 @@ CREATE TABLE public.usuario (
 ALTER TABLE public.usuario OWNER TO postgres;
 
 --
--- TOC entry 219 (class 1259 OID 16399)
+-- TOC entry 232 (class 1259 OID 24742)
 -- Name: usuario_id_usuario_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -318,8 +323,8 @@ CREATE SEQUENCE public.usuario_id_usuario_seq
 ALTER SEQUENCE public.usuario_id_usuario_seq OWNER TO postgres;
 
 --
--- TOC entry 5050 (class 0 OID 0)
--- Dependencies: 219
+-- TOC entry 5053 (class 0 OID 0)
+-- Dependencies: 232
 -- Name: usuario_id_usuario_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
@@ -327,7 +332,7 @@ ALTER SEQUENCE public.usuario_id_usuario_seq OWNED BY public.usuario.id_usuario;
 
 
 --
--- TOC entry 233 (class 1259 OID 24624)
+-- TOC entry 233 (class 1259 OID 24743)
 -- Name: usuario_setor; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -340,7 +345,7 @@ CREATE TABLE public.usuario_setor (
 ALTER TABLE public.usuario_setor OWNER TO postgres;
 
 --
--- TOC entry 4847 (class 2604 OID 16416)
+-- TOC entry 4843 (class 2604 OID 24748)
 -- Name: checklist id_checklist; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -348,7 +353,7 @@ ALTER TABLE ONLY public.checklist ALTER COLUMN id_checklist SET DEFAULT nextval(
 
 
 --
--- TOC entry 4853 (class 2604 OID 16447)
+-- TOC entry 4848 (class 2604 OID 24749)
 -- Name: execucao id_execucao; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -356,7 +361,7 @@ ALTER TABLE ONLY public.execucao ALTER COLUMN id_execucao SET DEFAULT nextval('p
 
 
 --
--- TOC entry 4851 (class 2604 OID 16427)
+-- TOC entry 4851 (class 2604 OID 24750)
 -- Name: item id_item; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -364,7 +369,7 @@ ALTER TABLE ONLY public.item ALTER COLUMN id_item SET DEFAULT nextval('public.it
 
 
 --
--- TOC entry 4857 (class 2604 OID 24586)
+-- TOC entry 4855 (class 2604 OID 24751)
 -- Name: log_auditoria id_log; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -372,7 +377,7 @@ ALTER TABLE ONLY public.log_auditoria ALTER COLUMN id_log SET DEFAULT nextval('p
 
 
 --
--- TOC entry 4856 (class 2604 OID 16469)
+-- TOC entry 4857 (class 2604 OID 24752)
 -- Name: resposta id_resposta; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -380,7 +385,7 @@ ALTER TABLE ONLY public.resposta ALTER COLUMN id_resposta SET DEFAULT nextval('p
 
 
 --
--- TOC entry 4859 (class 2604 OID 24614)
+-- TOC entry 4858 (class 2604 OID 24753)
 -- Name: setor id_setor; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -388,7 +393,7 @@ ALTER TABLE ONLY public.setor ALTER COLUMN id_setor SET DEFAULT nextval('public.
 
 
 --
--- TOC entry 4843 (class 2604 OID 16403)
+-- TOC entry 4859 (class 2604 OID 24754)
 -- Name: usuario id_usuario; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -396,7 +401,7 @@ ALTER TABLE ONLY public.usuario ALTER COLUMN id_usuario SET DEFAULT nextval('pub
 
 
 --
--- TOC entry 4865 (class 2606 OID 16422)
+-- TOC entry 4864 (class 2606 OID 24756)
 -- Name: checklist checklist_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -405,7 +410,7 @@ ALTER TABLE ONLY public.checklist
 
 
 --
--- TOC entry 4869 (class 2606 OID 16454)
+-- TOC entry 4866 (class 2606 OID 24758)
 -- Name: execucao execucao_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -414,7 +419,7 @@ ALTER TABLE ONLY public.execucao
 
 
 --
--- TOC entry 4867 (class 2606 OID 16437)
+-- TOC entry 4868 (class 2606 OID 24760)
 -- Name: item item_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -423,7 +428,7 @@ ALTER TABLE ONLY public.item
 
 
 --
--- TOC entry 4875 (class 2606 OID 24596)
+-- TOC entry 4870 (class 2606 OID 24762)
 -- Name: log_auditoria log_auditoria_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -432,7 +437,7 @@ ALTER TABLE ONLY public.log_auditoria
 
 
 --
--- TOC entry 4871 (class 2606 OID 16476)
+-- TOC entry 4872 (class 2606 OID 24764)
 -- Name: resposta resposta_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -441,7 +446,7 @@ ALTER TABLE ONLY public.resposta
 
 
 --
--- TOC entry 4877 (class 2606 OID 24618)
+-- TOC entry 4876 (class 2606 OID 24766)
 -- Name: setor setor_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -450,7 +455,7 @@ ALTER TABLE ONLY public.setor
 
 
 --
--- TOC entry 4873 (class 2606 OID 16478)
+-- TOC entry 4874 (class 2606 OID 24768)
 -- Name: resposta uk_execucao_item; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -459,7 +464,7 @@ ALTER TABLE ONLY public.resposta
 
 
 --
--- TOC entry 4861 (class 2606 OID 16411)
+-- TOC entry 4878 (class 2606 OID 24770)
 -- Name: usuario usuario_email_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -468,7 +473,7 @@ ALTER TABLE ONLY public.usuario
 
 
 --
--- TOC entry 4863 (class 2606 OID 16409)
+-- TOC entry 4880 (class 2606 OID 24772)
 -- Name: usuario usuario_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -477,7 +482,7 @@ ALTER TABLE ONLY public.usuario
 
 
 --
--- TOC entry 4879 (class 2606 OID 24630)
+-- TOC entry 4882 (class 2606 OID 24774)
 -- Name: usuario_setor usuario_setor_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -486,7 +491,7 @@ ALTER TABLE ONLY public.usuario_setor
 
 
 --
--- TOC entry 4880 (class 2606 OID 24641)
+-- TOC entry 4883 (class 2606 OID 24775)
 -- Name: checklist checklist_id_setor_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -495,7 +500,7 @@ ALTER TABLE ONLY public.checklist
 
 
 --
--- TOC entry 4883 (class 2606 OID 24603)
+-- TOC entry 4885 (class 2606 OID 24780)
 -- Name: execucao execucao_id_admin_resolucao_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -504,7 +509,7 @@ ALTER TABLE ONLY public.execucao
 
 
 --
--- TOC entry 4881 (class 2606 OID 24577)
+-- TOC entry 4884 (class 2606 OID 24785)
 -- Name: checklist fk_checklist_origem; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -513,7 +518,7 @@ ALTER TABLE ONLY public.checklist
 
 
 --
--- TOC entry 4884 (class 2606 OID 16455)
+-- TOC entry 4886 (class 2606 OID 24790)
 -- Name: execucao fk_execucao_checklist; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -522,7 +527,7 @@ ALTER TABLE ONLY public.execucao
 
 
 --
--- TOC entry 4885 (class 2606 OID 16460)
+-- TOC entry 4887 (class 2606 OID 24795)
 -- Name: execucao fk_execucao_usuario; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -531,7 +536,7 @@ ALTER TABLE ONLY public.execucao
 
 
 --
--- TOC entry 4882 (class 2606 OID 16438)
+-- TOC entry 4888 (class 2606 OID 24800)
 -- Name: item fk_item_checklist; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -540,7 +545,7 @@ ALTER TABLE ONLY public.item
 
 
 --
--- TOC entry 4888 (class 2606 OID 24597)
+-- TOC entry 4889 (class 2606 OID 24805)
 -- Name: log_auditoria fk_log_usuario; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -549,7 +554,7 @@ ALTER TABLE ONLY public.log_auditoria
 
 
 --
--- TOC entry 4886 (class 2606 OID 16479)
+-- TOC entry 4890 (class 2606 OID 24810)
 -- Name: resposta fk_resposta_execucao; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -558,7 +563,7 @@ ALTER TABLE ONLY public.resposta
 
 
 --
--- TOC entry 4887 (class 2606 OID 16484)
+-- TOC entry 4891 (class 2606 OID 24815)
 -- Name: resposta fk_resposta_item; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -567,7 +572,7 @@ ALTER TABLE ONLY public.resposta
 
 
 --
--- TOC entry 4889 (class 2606 OID 24619)
+-- TOC entry 4892 (class 2606 OID 24820)
 -- Name: setor setor_id_setor_pai_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -576,7 +581,7 @@ ALTER TABLE ONLY public.setor
 
 
 --
--- TOC entry 4890 (class 2606 OID 24636)
+-- TOC entry 4893 (class 2606 OID 24825)
 -- Name: usuario_setor usuario_setor_id_setor_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -585,7 +590,7 @@ ALTER TABLE ONLY public.usuario_setor
 
 
 --
--- TOC entry 4891 (class 2606 OID 24631)
+-- TOC entry 4894 (class 2606 OID 24830)
 -- Name: usuario_setor usuario_setor_id_usuario_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -593,11 +598,11 @@ ALTER TABLE ONLY public.usuario_setor
     ADD CONSTRAINT usuario_setor_id_usuario_fkey FOREIGN KEY (id_usuario) REFERENCES public.usuario(id_usuario) ON DELETE CASCADE;
 
 
--- Completed on 2026-09-10 10:01:08
+-- Completed on 2026-09-17 15:19:47
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict JHnKB80frxh3GIlf7CK1iwDuUjYqsqZAAo0n6ARyv3SbQbQ2zqf0JKfkDKcLM8s
+\unrestrict QKYJnGn5TX8CVVfxB6en9LI1QSKrxqsEjOSSriWhPMQWFmIMnbNp1DmdgPtvZWg
 

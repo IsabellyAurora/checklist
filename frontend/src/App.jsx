@@ -13,6 +13,8 @@ import Header from './components/Header';
 import HistoricoChecklist from './pages/HistoricoChecklist/HistoricoChecklist';
 import HistoricoNCs from './pages/HistoricoNCs/HistoricoNCs';
 import Dashboard from './pages/Dashboard/Dashboard';
+import MeuHistorico from './pages/MeuHistorico/MeuHistorico';
+import CalendarioAdmin from './pages/CalendarioAdmin/CalendarioAdmin';
 import './App.css';
 import { DeviceProvider } from './contexts/DeviceContext';
 
@@ -37,6 +39,8 @@ function App() {
           <Route path="/checklists/historico/:id" element={<HistoricoChecklist />} />
           <Route path="/historico-ncs" element={<HistoricoNCs />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/meu-historico" element={<MeuHistorico />} />
+          <Route path="/calendario" element={<CalendarioAdmin />} />
         </Routes>
       </DeviceProvider>
     </BrowserRouter>

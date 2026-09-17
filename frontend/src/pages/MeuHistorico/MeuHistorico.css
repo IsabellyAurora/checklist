@@ -1,0 +1,161 @@
+/* ========================================================= */
+/* CONTAINER PRINCIPAL E CARD                                */
+/* ========================================================= */
+.meu-historico-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  background-color: #f1f5f9; /* Fundo cinza suave padronizado */
+  padding: 2rem 1rem;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.meu-historico-card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+  padding: 2.5rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.meu-historico-card h2 {
+  margin-top: 0;
+  color: #1e293b;
+  font-size: 1.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.meu-historico-subtitulo {
+  color: #64748b;
+  font-size: 0.95rem;
+  margin-bottom: 2rem;
+  line-height: 1.5;
+}
+
+/* ========================================================= */
+/* TABELA DE RESULTADOS                                      */
+/* ========================================================= */
+.tabela-container {
+  overflow-x: auto;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  background-color: #ffffff;
+}
+
+.tabela-historico {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  min-width: 600px; /* Garante scroll no celular sem espremer conteúdo */
+}
+
+.tabela-historico th {
+  background-color: #f8fafc;
+  color: #475569;
+  padding: 12px 15px;
+  border-bottom: 2px solid #e2e8f0;
+  font-weight: bold;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tabela-historico td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: 0.95rem;
+  vertical-align: middle;
+}
+
+.tabela-historico tbody tr:hover {
+  background-color: #f1f5f9;
+}
+
+.col-destaque {
+  color: #0284c7 !important;
+}
+
+/* ========================================================= */
+/* BADGES E MENSAGENS VAZIAS                                 */
+/* ========================================================= */
+.badge-status-final {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.historico-vazio {
+  padding: 2.5rem;
+  text-align: center;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  border: 1px dashed #cbd5e1;
+  color: #64748b;
+  font-size: 0.95rem;
+  margin-bottom: 1.5rem;
+}
+
+/* ========================================================= */
+/* BOTÕES                                                    */
+/* ========================================================= */
+.btn-voltar-historico {
+  width: 100%;
+  padding: 0.9rem;
+  background-color: #ffffff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 1rem;
+}
+
+.btn-voltar-historico:hover {
+  background-color: #f8fafc;
+  border-color: #94a3b8;
+}
+
+/* ========================================================= */
+/* BARRA DE ROLAGEM CUSTOMIZADA DA TABELA                    */
+/* ========================================================= */
+.tabela-container::-webkit-scrollbar {
+  height: 8px;
+}
+.tabela-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 0 0 8px 8px;
+}
+.tabela-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.tabela-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ========================================================= */
+/* RESPONSIVIDADE (CELULARES E TABLETS MENORES)              */
+/* ========================================================= */
+@media (max-width: 600px) {
+  .meu-historico-container {
+    padding: 1rem 0.5rem;
+  }
+  
+  .meu-historico-card {
+    padding: 1.5rem;
+  }
+
+  .meu-historico-card h2 {
+    font-size: 1.35rem;
+  }
+}

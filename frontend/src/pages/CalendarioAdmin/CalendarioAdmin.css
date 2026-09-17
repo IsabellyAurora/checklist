@@ -1,0 +1,344 @@
+/* ========================================================= */
+/* CONTAINER PRINCIPAL E CARD                                */
+/* ========================================================= */
+.calendario-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  background-color: #f1f5f9;
+  padding: 2rem 1rem;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.calendario-card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+  padding: 2rem;
+  width: 100%;
+  max-width: 1200px;
+  box-sizing: border-box;
+}
+
+.calendario-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.calendario-header h2 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 1.6rem;
+}
+
+/* ======================================= */
+/* BARRA DE PESQUISA DE DATA (FILTROS)     */
+/* ======================================= */
+.busca-data-form {
+  background-color: #f8fafc;
+  padding: 1.2rem;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.busca-data-form label {
+  font-weight: 700;
+  color: #334155;
+  font-size: 0.95rem;
+}
+
+.busca-inputs {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.input-busca, .select-busca {
+  padding: 10px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  outline: none;
+  flex: 1;
+  min-width: 120px;
+  background-color: #ffffff;
+  color: #334155;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.input-busca:focus, .select-busca:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+.btn-buscar-data {
+  background-color: #0f766e;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 100px;
+  box-shadow: 0 2px 4px rgba(15, 118, 110, 0.2);
+}
+
+.btn-buscar-data:hover {
+  background-color: #0d9488;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(15, 118, 110, 0.3);
+}
+
+/* ======================================= */
+/* NAVEGAÇÃO DO CALENDÁRIO                 */
+/* ======================================= */
+.calendario-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.calendario-nav button {
+  background-color: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-weight: bold;
+  color: #334155;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.calendario-nav button:hover {
+  background-color: #e2e8f0;
+}
+
+.calendario-nav h3 {
+  margin: 0;
+  font-size: 1.3rem;
+  color: #0f172a;
+  text-transform: capitalize;
+}
+
+/* ======================================= */
+/* GRID E CÉLULAS                          */
+/* ======================================= */
+.calendario-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+
+.calendario-dia-semana {
+  text-align: center;
+  font-weight: bold;
+  color: #64748b;
+  padding: 10px 0;
+  background-color: #f8fafc;
+  border-radius: 6px;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+}
+
+.calendario-celula {
+  min-height: 130px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s;
+  cursor: pointer;
+  overflow: hidden; /* Garante que nada vaze do dia */
+}
+
+.calendario-celula:hover {
+  background-color: #f8fafc;
+  border-color: #94a3b8;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+.calendario-celula.vazia {
+  background-color: transparent;
+  border: none;
+  cursor: default;
+}
+
+.calendario-celula.vazia:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.calendario-celula.hoje {
+  border: 2px solid #0284c7;
+  background-color: #f0f9ff;
+}
+
+.numero-dia {
+  font-weight: bold;
+  color: #334155;
+  align-self: flex-end;
+  margin-bottom: 8px;
+}
+
+.calendario-celula.hoje .numero-dia {
+  color: #0284c7;
+}
+
+/* ======================================= */
+/* TEXTO DOS EVENTOS (CORREÇÃO DE VAZAMENTO) */
+/* ======================================= */
+.lista-eventos {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  flex: 1; 
+  width: 100%; /* Força a respeitar a largura da célula */
+}
+
+/* Oculta scrollbar da célula nativa */
+.lista-eventos::-webkit-scrollbar { width: 4px; }
+.lista-eventos::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+.evento-chip {
+  font-size: 0.75rem;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-weight: bold;
+  color: white;
+  text-align: left;
+  
+  /* MÁGICA DO CORTE INTELIGENTE */
+  display: block; /* Comporta-se como bloco */
+  width: 100%; /* Ocupa 100% da caixinha disponível */
+  box-sizing: border-box; /* Garante que o padding não estoure a largura */
+  white-space: nowrap; /* Impede de quebrar a linha e deformar o calendário */
+  overflow: hidden; /* Esconde o que passar do tamanho */
+  text-overflow: ellipsis; /* Adiciona os "..." no final */
+}
+
+.evento-chip.DATA_ESPECIFICA {
+  background-color: #0284c7; /* Azul */
+}
+
+.evento-chip.INTERVALO_DIAS {
+  background-color: #f59e0b; /* Laranja */
+}
+
+.evento-setor {
+  font-weight: normal;
+  font-size: 0.65rem;
+  opacity: 0.9;
+  /* Foi removido o display block daqui para o setor ficar na mesma linha e ser cortado junto */
+}
+
+/* ======================================= */
+/* BOTÕES DO MODAL                         */
+/* ======================================= */
+.botoes-modal {
+  display: flex;
+  gap: 10px;
+  margin-top: 25px;
+}
+
+.btn-cancelar {
+  flex: 1;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background-color: white;
+  color: #334155;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-cancelar:hover {
+  background-color: #f1f5f9;
+}
+
+.btn-salvar {
+  flex: 1;
+  padding: 12px;
+  border-radius: 6px;
+  border: none;
+  background-color: #10b981;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-salvar:hover {
+  background-color: #059669;
+}
+
+/* ======================================= */
+/* RESPONSIVIDADE PARA CELULARES           */
+/* ======================================= */
+@media (max-width: 768px) {
+  .calendario-container {
+    padding: 1rem 0.5rem;
+  }
+  
+  .calendario-card {
+    padding: 1rem;
+  }
+
+  .calendario-header h2 {
+    font-size: 1.4rem;
+  }
+
+  /* No celular, encolhe a grade para caber na tela sem rolar */
+  .calendario-grid {
+    gap: 3px;
+  }
+
+  .calendario-dia-semana {
+    font-size: 0.7rem;
+    padding: 6px 0;
+  }
+
+  .calendario-celula {
+    min-height: 85px;
+    padding: 4px;
+    border-radius: 6px;
+  }
+
+  .numero-dia {
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+  }
+
+  .evento-chip {
+    font-size: 0.65rem;
+    padding: 4px;
+  }
+
+  .modal-calendario {
+    width: 95%;
+    padding: 1.5rem;
+  }
+}

@@ -6,15 +6,18 @@ import './Home.css';
 export default function Home() {
   const [user, setUser] = useState(null);
   
+  // ALARMES ADMIN (NÃO CONFORMIDADES)
   const [alertas, setAlertas] = useState([]);
   const [modalNotificacoesAberto, setModalNotificacoesAberto] = useState(false);
-
   const [modalResolver, setModalResolver] = useState({ visivel: false, idExecucao: null });
   const [observacao, setObservacao] = useState('');
-  const [modalAviso, setModalAviso] = useState({ visivel: false, tipo: '', titulo: '', mensagem: '' });
-
-  const [nomesSetores, setNomesSetores] = useState([]);
   
+  // ALARMES OPERADOR (PENDÊNCIAS AGENDADAS HOJE)
+  const [pendentesHoje, setPendentesHoje] = useState([]);
+  const [modalPendentes, setModalPendentes] = useState(false);
+
+  const [modalAviso, setModalAviso] = useState({ visivel: false, tipo: '', titulo: '', mensagem: '' });
+  const [nomesSetores, setNomesSetores] = useState([]);
   const [mostrarSubsetores, setMostrarSubsetores] = useState(false);
 
   const navigate = useNavigate();
@@ -38,15 +41,42 @@ export default function Home() {
   }, [navigate]);
 
   useEffect(() => {
-    if (user) {
-      carregarSetores(); 
-      const isAdmin = user.setores?.some(s => String(s).toLowerCase() === 'admin');
-      
-      if (isAdmin) {
-        buscarNaoConformidadesNoFrontend();
-      }
+    if (!user) return;
+    
+    carregarSetores(); 
+    const isAdmin = user.setores?.some(s => String(s).toLowerCase() === 'admin');
+    
+    if (isAdmin) {
+      buscarNaoConformidadesNoFrontend();
+    } else {
+      // POLLING DE PENDÊNCIAS AGENDADAS (SÓ PARA MANUTENTORES COMUNS)
+      buscarPendentesHoje();
+      const intervalId = setInterval(buscarPendentesHoje, 30000); // Consulta a cada 30 segundos
+      return () => clearInterval(intervalId); // Limpa o ciclo ao sair da página
     }
   }, [user]);
+
+  // ==========================================
+  // BUSCA DE PENDÊNCIAS AGENDADAS (ROTINAS)
+  // ==========================================
+  const buscarPendentesHoje = async () => {
+    try {
+      const res = await fetchWithAuth('/api/checklists/pendentes/hoje');
+      if (res.ok) {
+        const json = await res.json();
+        // BLINDAGEM: Lê os dados corretamente mesmo se o backend mandar um Array direto
+        const dadosExtraidos = Array.isArray(json) ? json : (json.data || []);
+        setPendentesHoje(dadosExtraidos);
+      }
+    } catch (e) {
+      console.error("Erro silencioso ao buscar pendências:", e);
+    }
+  };
+
+  const iniciarPendente = (idChecklist) => {
+    // Leva para a tela de preencher com state indicando que quer iniciar esse checklist
+    navigate('/preencher-checklist', { state: { autoIniciarId: idChecklist } });
+  };
 
   // ==========================================
   // LÓGICA DE SETORES (PAI > FILHO COM CASCATA)
@@ -55,14 +85,11 @@ export default function Home() {
     if (!setorAtual.id_setor_pai || String(setorAtual.id_setor_pai) === '0') {
       return setorAtual.nome; 
     }
-    
     const setorPai = listaCompleta.find(s => String(s.id_setor) === String(setorAtual.id_setor_pai));
-    
     if (setorPai && String(setorPai.id_setor) !== String(setorAtual.id_setor)) {
       const nomeDoPai = construirNomeSetor(setorPai, listaCompleta);
       return `${nomeDoPai} > ${setorAtual.nome}`;
     }
-    
     return setorAtual.nome;
   };
 
@@ -114,7 +141,7 @@ export default function Home() {
   };
 
   // ==========================================
-  // LÓGICA DE NÃO CONFORMIDADES
+  // LÓGICA DE NÃO CONFORMIDADES (ADMIN)
   // ==========================================
   const buscarNaoConformidadesNoFrontend = async () => {
     try {
@@ -167,24 +194,18 @@ export default function Home() {
       return;
     }
 
-    const idExecucao = modalResolver.idExecucao;
-
     try {
-      const res = await fetchWithAuth(`/api/execucoes/${idExecucao}/resolver-nc`, {
+      const res = await fetchWithAuth(`/api/execucoes/${modalResolver.idExecucao}/resolver-nc`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ observacao })
       });
 
       if (res.ok) {
-        const novosAlertas = alertas.filter(alerta => alerta.id_execucao !== idExecucao);
+        const novosAlertas = alertas.filter(alerta => alerta.id_execucao !== modalResolver.idExecucao);
         setAlertas(novosAlertas);
         setModalResolver({ visivel: false, idExecucao: null });
-        
-        if (novosAlertas.length === 0) {
-          setModalNotificacoesAberto(false);
-        }
-
+        if (novosAlertas.length === 0) setModalNotificacoesAberto(false);
         setModalAviso({ visivel: true, tipo: 'sucesso', titulo: 'Sucesso!', mensagem: 'Resolvido e salvo no banco de dados!' });
       } else {
         const erroJson = await res.json().catch(() => ({}));
@@ -229,15 +250,14 @@ export default function Home() {
             <p>Escolha uma das ações abaixo para gerenciar o sistema:</p>
             
             <div className="admin-actions">
-              {/* NOVO BOTÃO DE DASHBOARD ADICIONADO AQUI */}
-              <button className="primary-button" onClick={() => navigate('/dashboard')} style={{ backgroundColor: '#D67F0D' }}> Dashboard Analítico</button>
-              
+              <button className="primary-button" onClick={() => navigate('/dashboard')} style={{ backgroundColor: '#D67F0D' }}>📊 Dashboard Analítico</button>
               <button className="primary-button" onClick={() => navigate('/cadastro-usuario')}>Cadastrar Novo Usuário</button>
               <button className="primary-button" onClick={() => navigate('/gerenciar-usuarios')}>Gerenciar Usuários (Resetar Senha)</button>
               <button className="primary-button" onClick={() => navigate('/cadastro-checklist')}>Criar Novo Checklist</button>
-              <button className="primary-button" onClick={() => navigate('/relatorios')}>Ver Relatórios</button>
+              <button className="primary-button" onClick={() => navigate('/relatorios')}>Ver Relatórios Globais</button>
               <button className="primary-button" onClick={() => navigate('/gerenciar-checklists')}>Gerenciar Checklists</button>
               <button className="primary-button" onClick={() => navigate('/historico-ncs')}>📜 Histórico de Não Conformidades</button>
+              <button className="primary-button" onClick={() => navigate('/calendario')}>📅 Calendário de Agendamentos</button>
             </div>
           </div>
         ) : (
@@ -283,72 +303,72 @@ export default function Home() {
             </div>
 
             <div className="admin-actions">
-              <button className="primary-button" onClick={() => navigate('/preencher-checklist')}>Iniciar Checklist</button>
+              <button className="primary-button" onClick={() => navigate('/preencher-checklist')} style={{ backgroundColor: '#0284c7' }}>📝 Iniciar Nova Execução</button>
+              <button className="primary-button" onClick={() => navigate('/meu-historico')} style={{ backgroundColor: '#475569' }}>📜 Meu Histórico Pessoal</button>
             </div>
           </div>
         )}
       </main>
 
-      {/* ÍCONE FLUTUANTE DE NOTIFICAÇÃO */}
+      {/* ========================================================= */}
+      {/* ÍCONE FLUTUANTE DE NOTIFICAÇÃO (ADMIN: NCs | OPERADOR: Pendências) */}
+      {/* ========================================================= */}
+      
+      {/* VISÃO DO ADMIN: Problemas Resolvidos */}
       {isAdmin && alertas.length > 0 && (
         <>
           {!modalNotificacoesAberto && (
-            <button 
-              className="icone-notificacao-flutuante"
-              onClick={() => setModalNotificacoesAberto(true)}
-              style={{
-                position: 'fixed', bottom: '30px', right: '30px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '50%',
-                width: '60px', height: '60px', fontSize: '24px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(220, 38, 38, 0.4)',
-                display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, animation: 'pulse 2s infinite'
-              }}
-              title="Ver Não Conformidades Pendentes"
-            >
-              ⚠️
-              <span style={{
-                position: 'absolute', top: '-5px', right: '-5px', backgroundColor: 'white', color: '#dc2626', fontSize: '12px', fontWeight: 'bold',
-                width: '24px', height: '24px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '2px solid #dc2626'
-              }}>
-                {alertas.length}
-              </span>
+            <button className="icone-notificacao-flutuante" onClick={() => setModalNotificacoesAberto(true)} style={{ position: 'fixed', bottom: '30px', right: '30px', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '50%', width: '60px', height: '60px', fontSize: '24px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(220, 38, 38, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, animation: 'pulse 2s infinite' }}>
+              ⚠️<span style={{ position: 'absolute', top: '-5px', right: '-5px', backgroundColor: 'white', color: '#dc2626', fontSize: '12px', fontWeight: 'bold', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '2px solid #dc2626' }}>{alertas.length}</span>
             </button>
           )}
 
           {modalNotificacoesAberto && (
-            <div 
-              style={{
-                position: 'fixed', bottom: '20px', right: '20px', width: '350px', maxHeight: '80vh', backgroundColor: 'white',
-                borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', zIndex: 1000, overflow: 'hidden', border: '1px solid #e2e8f0'
-              }}
-            >
+            <div style={{ position: 'fixed', bottom: '20px', right: '20px', width: '350px', maxHeight: '80vh', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', zIndex: 1000, overflow: 'hidden', border: '1px solid #e2e8f0' }}>
               <div style={{ backgroundColor: '#dc2626', color: 'white', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '18px' }}>⚠️</span>
-                  <strong style={{ fontSize: '16px' }}>Pendências ({alertas.length})</strong>
-                </div>
-                <button 
-                  onClick={() => setModalNotificacoesAberto(false)}
-                  style={{ background: 'none', border: 'none', color: 'white', fontSize: '18px', cursor: 'pointer', fontWeight: 'bold' }}
-                >
-                  ✕
-                </button>
+                <strong style={{ fontSize: '16px' }}>⚠️ Problemas (NCs) - {alertas.length}</strong>
+                <button onClick={() => setModalNotificacoesAberto(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '18px', cursor: 'pointer', fontWeight: 'bold' }}>✕</button>
               </div>
 
               <div style={{ padding: '15px', overflowY: 'auto', maxHeight: 'calc(80vh - 60px)', backgroundColor: '#f8fafc' }}>
                 {alertas.map((alerta) => (
                   <div key={alerta.id_execucao} style={{ backgroundColor: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px', marginBottom: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                    <span style={{ display: 'inline-block', backgroundColor: '#fee2e2', color: '#991b1b', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', marginBottom: '8px' }}>
-                      Execução Nº {alerta.id_execucao}
-                    </span>
+                    <span style={{ display: 'inline-block', backgroundColor: '#fee2e2', color: '#991b1b', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', marginBottom: '8px' }}>Execução Nº {alerta.id_execucao}</span>
                     <p style={{ margin: '0 0 4px 0', fontSize: '0.9rem', color: '#334155' }}><strong>Checklist:</strong> {alerta.checklist_titulo}</p>
                     <p style={{ margin: '0 0 4px 0', fontSize: '0.9rem', color: '#334155' }}><strong>Operador:</strong> {alerta.operador}</p>
                     <p style={{ margin: '0 0 10px 0', fontSize: '0.8rem', color: '#64748b' }}>Data: {formatarData(alerta.data_execucao)}</p>
-                    
-                    <button 
-                      onClick={() => abrirModalResolver(alerta.id_execucao)}
-                      style={{ width: '100%', backgroundColor: '#0284c7', color: 'white', border: 'none', padding: '8px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', transition: 'background-color 0.2s' }}
-                    >
-                      ✅ Resolver Pendência
-                    </button>
+                    <button onClick={() => abrirModalResolver(alerta.id_execucao)} style={{ width: '100%', backgroundColor: '#0284c7', color: 'white', border: 'none', padding: '8px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>✅ Resolver Pendência</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* VISÃO DO OPERADOR: Rotinas Agendadas para Hoje */}
+      {!isAdmin && pendentesHoje.length > 0 && (
+        <>
+          {!modalPendentes && (
+            <button className="icone-notificacao-flutuante" onClick={() => setModalPendentes(true)} style={{ position: 'fixed', bottom: '30px', right: '30px', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '50%', width: '60px', height: '60px', fontSize: '24px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(245, 158, 11, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, animation: 'pulse 2s infinite' }}>
+              📅<span style={{ position: 'absolute', top: '-5px', right: '-5px', backgroundColor: 'white', color: '#f59e0b', fontSize: '12px', fontWeight: 'bold', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '2px solid #f59e0b' }}>{pendentesHoje.length}</span>
+            </button>
+          )}
+
+          {/* Painel no Canto Inferior Direito (estilo Notificação) */}
+          {modalPendentes && (
+            <div style={{ position: 'fixed', bottom: '20px', right: '20px', width: '350px', maxHeight: '80vh', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', zIndex: 1000, border: '1px solid #e2e8f0' }}>
+              <div style={{ backgroundColor: '#f59e0b', color: 'white', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '11px 11px 0 0' }}>
+                <strong style={{ fontSize: '16px' }}>📅 Agendados Hoje ({pendentesHoje.length})</strong>
+                <button onClick={() => setModalPendentes(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '18px', cursor: 'pointer', fontWeight: 'bold' }}>✕</button>
+              </div>
+              <div style={{ padding: '15px', overflowY: 'auto', maxHeight: 'calc(80vh - 60px)', backgroundColor: '#f8fafc', borderRadius: '0 0 11px 11px' }}>
+                <p style={{ marginTop: '0', marginBottom: '15px', color: '#475569', fontSize: '0.9rem' }}>As seguintes rotinas aguardam execução:</p>
+                {pendentesHoje.map(p => (
+                  <div key={p.id_checklist} style={{ backgroundColor: 'white', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                    <strong style={{ display: 'block', color: '#1e293b', fontSize: '1rem', marginBottom: '5px' }}>{p.titulo}</strong>
+                    <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 10px 0' }}>Tipo: {p.tipo_agendamento === 'INTERVALO_DIAS' ? 'Recorrente' : 'Data Única'}</p>
+                    <button onClick={() => iniciarPendente(p.id_checklist)} style={{ width: '100%', padding: '8px', backgroundColor: '#0284c7', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.95rem' }}>Assumir Tarefa</button>
                   </div>
                 ))}
               </div>
@@ -358,7 +378,7 @@ export default function Home() {
       )}
 
       {/* ========================================================= */}
-      {/* MODAL DE RESOLUÇÃO PADRONIZADO (BOTÕES IGUAIS)            */}
+      {/* MODAL DE RESOLUÇÃO NC PADRONIZADO (BOTÕES IGUAIS)           */}
       {/* ========================================================= */}
       {modalResolver.visivel && (
         <div className="modal-overlay">
@@ -389,7 +409,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* MODAL AVISOS */}
       {modalAviso.visivel && (
         <div className="modal-overlay">
           <div className="modal-content">

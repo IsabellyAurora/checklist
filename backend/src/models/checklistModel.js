@@ -1,31 +1,39 @@
 const pool = require('../config/db');
 
-// Atualizado para receber idSetor
-const criarChecklistComItens = async (titulo, idSetor, itens) => {
+const criarChecklistComItens = async (titulo, idSetor, tipoAgendamento, intervaloDias, dataEspecifica, itens) => {
   const client = await pool.connect();
 
   try {
     await client.query('BEGIN');
 
-    // Substituindo setor por id_setor
     const resChecklist = await client.query(
-      'INSERT INTO checklist (titulo, id_setor) VALUES ($1, $2) RETURNING id_checklist, titulo, id_setor, ativo, data_criacao',
-      [titulo, idSetor]
+      `INSERT INTO checklist (titulo, id_setor, tipo_agendamento, intervalo_dias, data_especifica) 
+       VALUES ($1, $2, $3, $4, $5) RETURNING id_checklist, titulo, id_setor, ativo, data_criacao`,
+      [titulo, idSetor, tipoAgendamento || 'INTERVALO_DIAS', intervaloDias || null, dataEspecifica || null]
     );
     const novoChecklist = resChecklist.rows[0];
 
     const itensCriados = [];
 
+    // Adicionado os campos 'etapa' e 'ordem_etapa'
     for (const item of itens) {
       const resItem = await client.query(
-        'INSERT INTO item (id_checklist, ordem, descricao, tipo, obrigatorio) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-        [novoChecklist.id_checklist, item.ordem, item.descricao, item.tipo, item.obrigatorio !== undefined ? item.obrigatorio : true]
+        `INSERT INTO item (id_checklist, ordem, descricao, tipo, obrigatorio, etapa, ordem_etapa) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+        [
+          novoChecklist.id_checklist, 
+          item.ordem, 
+          item.descricao, 
+          item.tipo, 
+          item.obrigatorio !== undefined ? item.obrigatorio : true,
+          item.etapa || 'Inspeção Geral',
+          item.ordem_etapa || 1
+        ]
       );
       itensCriados.push(resItem.rows[0]);
     }
 
     await client.query('COMMIT');
-
     return { ...novoChecklist, itens: itensCriados };
   } catch (error) {
     await client.query('ROLLBACK');
@@ -34,24 +42,23 @@ const criarChecklistComItens = async (titulo, idSetor, itens) => {
     client.release();
   }
 };
-
 // Adicionado JOIN com a tabela setor para retornar o nome_setor
 const listarChecklists = async (idSetorFiltro, page = 1, limit = 10, setoresUsuario = []) => {
   const offset = (page - 1) * limit;
   let query = `
-    SELECT c.id_checklist, c.titulo, c.id_setor, s.nome AS nome_setor, c.ativo, c.data_criacao 
+    SELECT 
+        c.id_checklist, c.titulo, c.id_setor, s.nome AS nome_setor, c.ativo, c.data_criacao,
+        c.tipo_agendamento, c.intervalo_dias, c.data_especifica 
     FROM checklist c
     LEFT JOIN setor s ON c.id_setor = s.id_setor
     WHERE c.ativo = true
   `;
   const values = [];
   
-  // Se o frontend pediu um setor específico no select
   if (idSetorFiltro) {
     values.push(idSetorFiltro);
     query += ` AND c.id_setor = $${values.length}`;
   } 
-  // Senão, lista todos que o usuário tem acesso hierárquico
   else if (setoresUsuario && setoresUsuario.length > 0) {
     values.push(setoresUsuario);
     query += ` AND c.id_setor = ANY($${values.length}::int[])`;
@@ -100,13 +107,12 @@ const buscarChecklistPorId = async (idChecklist) => {
 };
 
 // Atualizado para usar idSetor
-const editarChecklistComVersionamento = async (idChecklist, titulo, idSetor, itens, idUsuario) => {
+const editarChecklistComVersionamento = async (idChecklist, titulo, idSetor, tipoAgendamento, intervaloDias, dataEspecifica, itens, idUsuario) => {
   const client = await pool.connect();
 
   try {
     await client.query('BEGIN'); 
 
-    // Verifica se já existe execução vinculada a este checklist[cite: 1]
     const resUso = await client.query('SELECT 1 FROM execucao WHERE id_checklist = $1 LIMIT 1', [idChecklist]);
     const emUso = resUso.rowCount > 0;
 
@@ -123,10 +129,10 @@ const editarChecklistComVersionamento = async (idChecklist, titulo, idSetor, ite
       const origem = dadosAntigos.id_checklist_origem || idChecklist;
       const novaVersao = (dadosAntigos.versao || 1) + 1;
 
-      // Usando id_setor no INSERT
       const resNovo = await client.query(
-        'INSERT INTO checklist (titulo, id_setor, versao, id_checklist_origem) VALUES ($1, $2, $3, $4) RETURNING *',
-        [titulo, idSetor, novaVersao, origem]
+        `INSERT INTO checklist (titulo, id_setor, versao, id_checklist_origem, tipo_agendamento, intervalo_dias, data_especifica) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+        [titulo, idSetor, novaVersao, origem, tipoAgendamento || 'INTERVALO_DIAS', intervaloDias || null, dataEspecifica || null]
       );
       
       const dadosNovos = resNovo.rows[0];
@@ -138,25 +144,33 @@ const editarChecklistComVersionamento = async (idChecklist, titulo, idSetor, ite
         [idUsuario, idFinal, JSON.stringify(dadosAntigos), JSON.stringify(dadosNovos)]
       );
     } else {
-      // Usando id_setor no UPDATE
-      await client.query('UPDATE checklist SET titulo = $1, id_setor = $2 WHERE id_checklist = $3', [titulo, idSetor, idChecklist]);
+      await client.query(
+        `UPDATE checklist SET titulo = $1, id_setor = $2, tipo_agendamento = $3, intervalo_dias = $4, data_especifica = $5 
+         WHERE id_checklist = $6`, 
+        [titulo, idSetor, tipoAgendamento, intervaloDias, dataEspecifica, idChecklist]
+      );
       await client.query('DELETE FROM item WHERE id_checklist = $1', [idChecklist]);
     }
 
     const novosItensCriados = [];
 
+    // Adicionado etapa e ordem_etapa no insert dos itens editados
     for (const item of itens) {
       const imagemUrl = item.imagem_url || item.imagem_referencia || null;
 
       const resItem = await client.query(
-        'INSERT INTO item (id_checklist, ordem, descricao, tipo, obrigatorio, imagem_referencia) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-        [idFinal, item.ordem, item.descricao, item.tipo, item.obrigatorio !== undefined ? item.obrigatorio : true, imagemUrl]
+        `INSERT INTO item (id_checklist, ordem, descricao, tipo, obrigatorio, imagem_referencia, etapa, ordem_etapa) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+        [
+          idFinal, item.ordem, item.descricao, item.tipo, 
+          item.obrigatorio !== undefined ? item.obrigatorio : true, 
+          imagemUrl, item.etapa || 'Inspeção Geral', item.ordem_etapa || 1
+        ]
       );
       novosItensCriados.push(resItem.rows[0]);
     }
 
     await client.query('COMMIT'); 
-    
     return { id_checklist: idFinal, itens: novosItensCriados };
 
   } catch (error) {
@@ -220,6 +234,57 @@ const buscarHistoricoVersoes = async (idChecklist) => {
   return historicoCompleto;
 };
 
+const listarChecklistsPendentes = async (setoresUsuario = []) => {
+  let whereSetor = '';
+  const values = [];
+
+  if (setoresUsuario && setoresUsuario.length > 0) {
+    values.push(setoresUsuario);
+    whereSetor = `AND c.id_setor = ANY($1::int[])`;
+  }
+
+  const query = `
+    SELECT 
+        c.id_checklist, 
+        c.titulo, 
+        c.tipo_agendamento,
+        c.intervalo_dias,
+        MAX(e.data_inicio) AS data_ultima_execucao
+    FROM 
+        checklist c
+    LEFT JOIN 
+        execucao e ON c.id_checklist = e.id_checklist 
+                   AND (
+                       e.status = 'CONCLUIDO' 
+                       OR 
+                       (e.status = 'EM_ANDAMENTO' AND e.data_inicio >= NOW() - INTERVAL '4 hours')
+                   )
+    WHERE 
+        c.ativo = true ${whereSetor}
+    GROUP BY 
+        c.id_checklist, c.titulo, c.tipo_agendamento, c.intervalo_dias, c.data_especifica
+    HAVING 
+        (
+            -- Regra 1: Intervalo de Dias
+            c.tipo_agendamento = 'INTERVALO_DIAS' AND (
+                MAX(e.data_inicio) IS NULL 
+                OR CURRENT_DATE >= (MAX(e.data_inicio)::DATE + c.intervalo_dias)
+            )
+        )
+        OR
+        (
+            -- Regra 2: Data Específica
+            c.tipo_agendamento = 'DATA_ESPECIFICA' AND (
+                c.data_especifica <= CURRENT_DATE 
+                AND MAX(e.data_inicio)::DATE IS DISTINCT FROM CURRENT_DATE
+            )
+        )
+  `;
+
+  const { rows } = await pool.query(query, values);
+  return rows;
+};
+
 module.exports = {
   criarChecklistComItens,
   listarChecklists,
@@ -228,4 +293,5 @@ module.exports = {
   inativarChecklist,
   anexarReferenciaNoItem,
   buscarHistoricoVersoes,
+  listarChecklistsPendentes
 };

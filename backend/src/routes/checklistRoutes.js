@@ -1,3 +1,4 @@
+// checklistRoutes.js
 const express = require('express');
 const router = express.Router();
 const checklistController = require('../controllers/checklistController');
@@ -32,7 +33,7 @@ const verificarToken = require('../middlewares/authMiddleware');
  *       200:
  *         description: Objeto contendo os dados de paginação e o array de checklists.
  *   post:
- *     summary: Cria um novo checklist vinculado a um setor com seus itens
+ *     summary: Cria um novo checklist com controle de periodicidade e etapas
  *     tags: [Checklists]
  *     security:
  *       - bearerAuth: []
@@ -47,6 +48,14 @@ const verificarToken = require('../middlewares/authMiddleware');
  *                 type: string
  *               id_setor:
  *                 type: integer
+ *               tipo_agendamento:
+ *                 type: string
+ *                 description: "INTERVALO_DIAS ou DATA_ESPECIFICA"
+ *               intervalo_dias:
+ *                 type: integer
+ *               data_especifica:
+ *                 type: string
+ *                 format: date
  *               itens:
  *                 type: array
  *                 items:
@@ -60,14 +69,22 @@ const verificarToken = require('../middlewares/authMiddleware');
  *                       type: string
  *                     obrigatorio:
  *                       type: boolean
+ *                     etapa:
+ *                       type: string
+ *                     ordem_etapa:
+ *                       type: integer
  *             example:
- *               titulo: "Inspeção Diária de Empilhadeira"
+ *               titulo: "Inspeção Diária de Motores"
  *               id_setor: 1
+ *               tipo_agendamento: "INTERVALO_DIAS"
+ *               intervalo_dias: 15
  *               itens:
  *                 - ordem: 1
- *                   descricao: "Verificar nível de óleo"
- *                   tipo: "TEXTO"
+ *                   descricao: "Verificar ruído"
+ *                   tipo: "booleano"
  *                   obrigatorio: true
+ *                   etapa: "Passo 1: Motores"
+ *                   ordem_etapa: 1
  *     responses:
  *       201:
  *         description: Checklist e itens criados com sucesso.
@@ -76,6 +93,21 @@ const verificarToken = require('../middlewares/authMiddleware');
  */
 router.get('/checklists', verificarToken(), checklistController.listarChecklists);
 router.post('/checklists', verificarToken(['admin']), checklistController.criarChecklist);
+
+/**
+ * @swagger
+ * /checklists/pendentes/hoje:
+ *   get:
+ *     summary: Lista os checklists que precisam ser preenchidos no dia atual
+ *     description: Calcula pendências baseadas no intervalo de dias e na última execução concluída. Ignora checklists que já estão EM_ANDAMENTO.
+ *     tags: [Checklists]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Array de checklists pendentes.
+ */
+router.get('/checklists/pendentes/hoje', verificarToken(), checklistController.listarPendentesDia);
 
 /**
  * @swagger
@@ -101,7 +133,7 @@ router.get('/checklists/:id', checklistController.buscarChecklist);
  * @swagger
  * /checklists/{id}:
  *   put:
- *     summary: Atualiza o título e itens de um checklist (Cria nova versão se já houver execuções)
+ *     summary: Atualiza os dados do checklist e itens (Cria nova versão se já houver execuções)
  *     tags: [Checklists]
  *     security:
  *       - bearerAuth: []
@@ -122,6 +154,13 @@ router.get('/checklists/:id', checklistController.buscarChecklist);
  *                 type: string
  *               id_setor:
  *                 type: integer
+ *               tipo_agendamento:
+ *                 type: string
+ *               intervalo_dias:
+ *                 type: integer
+ *               data_especifica:
+ *                 type: string
+ *                 format: date
  *               itens:
  *                 type: array
  *                 items:
@@ -135,6 +174,10 @@ router.get('/checklists/:id', checklistController.buscarChecklist);
  *                       type: string
  *                     obrigatorio:
  *                       type: boolean
+ *                     etapa:
+ *                       type: string
+ *                     ordem_etapa:
+ *                       type: integer
  *     responses:
  *       200:
  *         description: Checklist atualizado com sucesso.
