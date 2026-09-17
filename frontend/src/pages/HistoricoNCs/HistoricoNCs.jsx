@@ -29,7 +29,6 @@ export default function HistoricoNCs() {
     }
     const parsedUser = JSON.parse(userData);
     
-    // Verificação de Admin convertendo array para String (blindada)
     if (!parsedUser.setores?.some(s => String(s).toLowerCase() === 'admin')) {
       alert("Acesso negado. Apenas administradores.");
       navigate('/home');
@@ -166,9 +165,9 @@ export default function HistoricoNCs() {
         <h2>Histórico de Não Conformidades (NC)</h2>
         <p>Acompanhe e gerencie todos os problemas reportados nos checklists.</p>
 
-        <div className="filtros-container">
-          <label htmlFor="filtro-status">Filtrar por Status:</label>
-          <select id="filtro-status" value={filtroStatus} onChange={handleMudarFiltro} className="select-filtro">
+        <div className="filtros-container" style={{ display: 'flex', flexDirection: window.innerWidth < 600 ? 'column' : 'row', gap: '8px', alignItems: window.innerWidth < 600 ? 'stretch' : 'center' }}>
+          <label htmlFor="filtro-status" style={{ fontWeight: 'bold' }}>Filtrar por Status:</label>
+          <select id="filtro-status" value={filtroStatus} onChange={handleMudarFiltro} className="select-filtro" style={{ width: '100%', boxSizing: 'border-box' }}>
             <option value="">Todas (Pendentes e Resolvidas)</option>
             <option value="PENDENTE">🔴 Apenas Pendentes</option>
             <option value="RESOLVIDO">✅ Apenas Resolvidas</option>
@@ -195,21 +194,21 @@ export default function HistoricoNCs() {
                   {ncsPaginadas.length > 0 ? (
                     ncsPaginadas.map((nc) => (
                       <tr key={nc.id_execucao}>
-                        <td className="col-destaque">
+                        <td className="col-destaque" data-label="OS / Execução">
                           <strong>{nc.ordem_servico ? `OS: ${nc.ordem_servico}` : 'S/ OS'}</strong>
                           <br/><small>Exec: #{nc.id_execucao}</small>
                         </td>
-                        <td>
+                        <td data-label="Checklist / Setor">
                           <strong>{nc.checklist_titulo}</strong>
                           <br/>
                           <small style={{ color: '#475569' }}>{getNomeSetor(nc.id_setor)}</small>
                         </td>
-                        <td>{nc.operador}</td>
-                        <td>{formatarData(nc.data_execucao)}</td>
-                        <td>
+                        <td data-label="Operador">{nc.operador}</td>
+                        <td data-label="Data">{formatarData(nc.data_execucao)}</td>
+                        <td data-label="Status">
                           <span className={`badge-status-nc ${nc.status === 'PENDENTE' ? 'pendente' : 'resolvido'}`}>{nc.status}</span>
                         </td>
-                        <td>
+                        <td data-label="Ação">
                           {nc.status === 'PENDENTE' ? (
                             <button className="btn-resolver-nc" onClick={() => abrirModalResolver(nc.id_execucao)}>Resolver</button>
                           ) : (
@@ -245,27 +244,27 @@ export default function HistoricoNCs() {
       </div>
 
       {/* ========================================================= */}
-      {/* MODAL DE RESOLUÇÃO (AGORA COM BOTÕES IGUAIS)              */}
+      {/* MODAL DE RESOLUÇÃO */}
       {/* ========================================================= */}
       {modalResolver.visivel && (
         <div className="modal-overlay">
-          <div className="modal-content">
+          <div className="modal-content" style={{ width: '90%', maxWidth: '450px', boxSizing: 'border-box' }}>
             <h3>Resolver Pendência</h3>
             <p>Qual foi a tratativa realizada para resolver a NC da execução <strong>#{modalResolver.idExecucao}</strong>?</p>
             <textarea 
-              style={{ width: '100%', minHeight: '90px', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '15px', fontFamily: 'inherit', resize: 'none' }}
+              style={{ width: '100%', minHeight: '90px', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '15px', fontFamily: 'inherit', resize: 'none', boxSizing: 'border-box' }}
               value={observacao} onChange={(e) => setObservacao(e.target.value)}
               placeholder="Descreva o que foi feito..."
             />
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               <button 
-                style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: 'white', color: '#333', fontWeight: 'bold', cursor: 'pointer', margin: 0 }} 
+                style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: 'white', color: '#333', fontWeight: 'bold', cursor: 'pointer', margin: 0, minWidth: '100px' }} 
                 onClick={() => setModalResolver({ visivel: false, idExecucao: null })}
               >
                 Cancelar
               </button>
               <button 
-                style={{ flex: 1, padding: '10px', borderRadius: '6px', border: 'none', backgroundColor: '#F57c00', color: 'white', fontWeight: 'bold', cursor: 'pointer', margin: 0 }} 
+                style={{ flex: 1, padding: '10px', borderRadius: '6px', border: 'none', backgroundColor: '#F57c00', color: 'white', fontWeight: 'bold', cursor: 'pointer', margin: 0, minWidth: '100px' }} 
                 onClick={confirmarResolucao} 
                 disabled={!observacao.trim()}
               >
@@ -278,7 +277,7 @@ export default function HistoricoNCs() {
 
       {modalJustificativa.visivel && (
         <div className="modal-overlay">
-          <div className="modal-content">
+          <div className="modal-content" style={{ width: '90%', maxWidth: '450px', boxSizing: 'border-box' }}>
             <h3>Tratativa da Execução #{modalJustificativa.idExecucao}</h3>
             <div style={{ backgroundColor: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
               <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>{modalJustificativa.texto}</p>
@@ -290,7 +289,7 @@ export default function HistoricoNCs() {
 
       {modalAviso.visivel && (
         <div className="modal-overlay">
-          <div className="modal-content">
+          <div className="modal-content" style={{ width: '90%', maxWidth: '400px', boxSizing: 'border-box' }}>
             {modalAviso.tipo === 'erro' ? '⚠️' : '✅'}
             <h3 className={modalAviso.tipo === 'erro' ? 'texto-erro' : 'texto-sucesso'}>{modalAviso.titulo}</h3>
             <p>{modalAviso.mensagem}</p>

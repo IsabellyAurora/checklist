@@ -255,7 +255,7 @@ export default function GerenciarUsuarios() {
         <h2>Gerenciar Usuários</h2>
         <p>Lista de funcionários cadastrados no sistema.</p>
 
-        <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f8fafc', padding: '10px 15px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+        <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f8fafc', padding: '10px 15px', borderRadius: '8px', border: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
           <label htmlFor="buscaSetor" style={{ fontWeight: 'bold', color: '#475569', margin: 0 }}>
             🔍 Buscar por Setor:
           </label>
@@ -265,7 +265,7 @@ export default function GerenciarUsuarios() {
             placeholder="Ex: TI, Limpeza, Manutenção..."
             value={buscaSetor}
             onChange={(e) => setBuscaSetor(e.target.value)}
-            style={{ flex: 1, padding: '8px 12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.95rem', maxWidth: '300px' }}
+            style={{ flex: 1, padding: '8px 12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.95rem', minWidth: '200px' }}
           />
         </div>
 
@@ -274,8 +274,7 @@ export default function GerenciarUsuarios() {
             <thead>
               <tr>
                 <th>ID</th>
-                <th>Nome</th>
-                {!isMobile && <th>E-mail</th>}
+                <th>Nome / E-mail</th>
                 <th>Setores</th>
                 <th>Ações</th>
               </tr>
@@ -287,20 +286,23 @@ export default function GerenciarUsuarios() {
 
                   return (
                     <tr key={user.id_usuario} style={{ opacity: isAtivo ? 1 : 0.6 }}>
-                      <td className="col-destaque">#{user.id_usuario}</td>
-                      <td>
-                        <strong>{user.nome}</strong>
-                        {!isAtivo && (
-                          <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#d32f2f', backgroundColor: '#ffebee', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
-                            Inativo
-                          </span>
-                        )}
+                      <td className="col-destaque" data-label="ID">#{user.id_usuario}</td>
+                      
+                      <td data-label="Nome / E-mail">
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <strong>{user.nome}</strong>
+                          <span style={{ fontSize: '0.85rem', color: '#64748b', wordBreak: 'break-all' }}>{user.email}</span>
+                          {!isAtivo && (
+                            <span style={{ marginTop: '4px', alignSelf: 'flex-start', fontSize: '0.75rem', color: '#d32f2f', backgroundColor: '#ffebee', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
+                              Inativo
+                            </span>
+                          )}
+                        </div>
                       </td>
-                      {!isMobile && <td>{user.email}</td>}
                       
-                      <td>{user.setores ? user.setores.join(', ') : '-'}</td>
+                      <td data-label="Setores">{user.setores ? user.setores.join(', ') : '-'}</td>
                       
-                      <td>
+                      <td data-label="Ações">
                         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                           <button 
                             className="btn-resetar"
@@ -348,7 +350,7 @@ export default function GerenciarUsuarios() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={isMobile ? "4" : "5"} className="tabela-vazia">
+                  <td colSpan="4" className="tabela-vazia">
                     Nenhum usuário encontrado para a busca "{buscaSetor}".
                   </td>
                 </tr>
@@ -359,7 +361,7 @@ export default function GerenciarUsuarios() {
 
         <button 
           className="btn-voltar-home" 
-          style={{ width: isTablet ? '100%' : 'auto', marginTop: '1.5rem' }}
+          style={{ width: isTablet || isMobile ? '100%' : 'auto', marginTop: '1.5rem' }}
           onClick={() => navigate('/home')}
         >
           Voltar para Home
@@ -367,7 +369,7 @@ export default function GerenciarUsuarios() {
       </div>
 
       {/* ========================================================= */}
-      {/* MODAL PARA EDITAR SETORES DO USUÁRIO (COM FONTE PADRONIZADA) */}
+      {/* MODAL PARA EDITAR SETORES DO USUÁRIO */}
       {/* ========================================================= */}
       {modalSetores.visivel && (
         <div className="modal-overlay">
@@ -384,7 +386,7 @@ export default function GerenciarUsuarios() {
               onChange={(e) => setBuscaSetorModal(e.target.value)}
               style={{ 
                 width: '100%', padding: '8px 12px', borderRadius: '6px', 
-                border: '1px solid #cbd5e1', fontSize: '0.85rem', /* FONTE AJUSTADA */
+                border: '1px solid #cbd5e1', fontSize: '0.85rem', 
                 marginBottom: '10px', boxSizing: 'border-box'
               }}
             />
@@ -407,7 +409,7 @@ export default function GerenciarUsuarios() {
                       {/* PAI */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '8px 12px' }}>
                         {pai ? (
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold', color: '#334155', fontSize: '0.85rem', flex: 1, margin: 0 }}> {/* FONTE AJUSTADA */}
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold', color: '#334155', fontSize: '0.85rem', flex: 1, margin: 0 }}>
                             <input
                               type="checkbox"
                               checked={modalSetores.setoresSelecionados.includes(Number(pai.id_setor))}
@@ -417,14 +419,14 @@ export default function GerenciarUsuarios() {
                             {pai.nomeExibicao}
                           </label>
                         ) : (
-                          <span style={{ fontWeight: 'bold', color: '#334155', fontSize: '0.85rem', flex: 1 }}>{nomePai} (Subsetores)</span> /* FONTE AJUSTADA */
+                          <span style={{ fontWeight: 'bold', color: '#334155', fontSize: '0.85rem', flex: 1 }}>{nomePai} (Subsetores)</span>
                         )}
 
                         {filhos.length > 0 && (
                           <button 
                             type="button"
                             onClick={() => toggleGrupo(nomePai)}
-                            style={{ background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.75rem', color: '#0284c7', fontWeight: 'bold' }} /* FONTE AJUSTADA */
+                            style={{ background: 'white', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontSize: '0.75rem', color: '#0284c7', fontWeight: 'bold' }}
                           >
                             {isExpandido ? '▲ Ocultar' : '▼ Ver subsetores'}
                           </button>
@@ -435,7 +437,7 @@ export default function GerenciarUsuarios() {
                       {isExpandido && filhos.length > 0 && (
                         <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid #cbd5e1' }}>
                           {filhos.map(filho => (
-                            <label key={filho.id_setor} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'normal', color: '#555', paddingLeft: '24px', fontSize: '0.85rem', margin: 0 }}> {/* FONTE AJUSTADA */}
+                            <label key={filho.id_setor} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'normal', color: '#555', paddingLeft: '24px', fontSize: '0.85rem', margin: 0 }}>
                               <input
                                 type="checkbox"
                                 checked={modalSetores.setoresSelecionados.includes(Number(filho.id_setor))}

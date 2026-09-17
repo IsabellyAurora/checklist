@@ -278,7 +278,7 @@ export default function CadastroChecklist() {
   };
 
   return (
-    <div className="cadastro-checklist-container">
+    <div className="cadastro-checklist-container" style={{ padding: '1rem', boxSizing: 'border-box', width: '100%', display: 'flex', justifyContent: 'center' }}>
       <div className="cadastro-checklist-card" style={{ maxWidth: '850px', width: '100%', padding: window.innerWidth < 600 ? '1rem' : '2rem', boxSizing: 'border-box' }}>
         <h2>Criar Novo Checklist</h2>
         <p>Defina o título, agendamento e estruture as perguntas em etapas.</p>
@@ -358,7 +358,7 @@ export default function CadastroChecklist() {
                         {isExpandido && filhos.length > 0 && (
                           <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid #cbd5e1' }}>
                             {filhos.map(filho => (
-                              <label key={filho.id_setor} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'normal', color: '#555', paddingLeft: '24px' }}>
+                              <label key={filho.id_setor} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'normal', color: '#555', paddingLeft: '24px', flexWrap: 'wrap' }}>
                                 <input
                                   type="radio"
                                   name="setorSelecionado"
@@ -405,7 +405,7 @@ export default function CadastroChecklist() {
               </div>
             )}
 
-            <div className="checkbox-group" style={{ marginTop: '1.5rem' }}>
+            <div className="checkbox-group" style={{ marginTop: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <input
                 type="checkbox"
                 id="ativo"
@@ -446,14 +446,14 @@ export default function CadastroChecklist() {
               <div key={bIndex} style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '1.2rem', marginBottom: '1.5rem', background: '#ffffff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem', flexWrap: 'wrap', gap: '10px' }}>
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '10px', minWidth: '200px' }}>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '10px', minWidth: '200px', flexWrap: 'wrap' }}>
                     <span style={{ backgroundColor: '#0284c7', color: 'white', padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold', fontSize: '0.8rem' }}>Etapa {bIndex + 1}</span>
                     <input 
                       type="text" 
                       value={bloco.nome_etapa} 
                       onChange={e => atualizarItem(bIndex, null, 'nome_etapa', e.target.value)} 
                       onInput={e => { const nb = [...blocos]; nb[bIndex].nome_etapa = e.target.value; setBlocos(nb); }}
-                      style={{ fontSize: '1.1rem', fontWeight: 'bold', border: 'none', borderBottom: '2px solid #cbd5e1', outline: 'none', width: '100%', paddingBottom: '4px', color: '#0f172a' }} 
+                      style={{ fontSize: '1.1rem', fontWeight: 'bold', border: 'none', borderBottom: '2px solid #cbd5e1', outline: 'none', width: '100%', paddingBottom: '4px', color: '#0f172a', boxSizing: 'border-box' }} 
                       required 
                       placeholder="Ex: Inspeção Visual Externa" 
                     />
@@ -464,11 +464,11 @@ export default function CadastroChecklist() {
                 </div>
 
                 {bloco.itens.map((item, iIndex) => (
-                  <div key={iIndex} className="item-row" style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '1rem', backgroundColor: '#f8fafc' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.8rem' }}>
+                  <div key={iIndex} className="item-row" style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '1rem', backgroundColor: '#f8fafc', boxSizing: 'border-box' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.8rem', flexWrap: 'wrap' }}>
                       <span className="item-ordem" style={{ fontWeight: 'bold', color: '#64748b', marginTop: '10px' }}>#{iIndex + 1}</span>
                       
-                      <div className="item-inputs" style={{ display: 'flex', gap: '0.8rem', flex: 1, flexWrap: 'wrap' }}>
+                      <div className="item-inputs" style={{ display: 'flex', gap: '0.8rem', flex: 1, flexWrap: 'wrap', minWidth: '220px' }}>
                         <input
                           type="text"
                           value={item.descricao}
@@ -476,14 +476,14 @@ export default function CadastroChecklist() {
                           placeholder="Descrição da pergunta ou verificação"
                           required
                           className="input-descricao"
-                          style={{ flex: '1 1 100%', minWidth: '200px', padding: '0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', boxSizing: 'border-box' }}
+                          style={{ flex: '1 1 100%', minWidth: '180px', padding: '0.8rem', border: '1px solid #cbd5e1', borderRadius: '6px', boxSizing: 'border-box' }}
                         />
                         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', width: '100%' }}>
                           <select
                             value={item.tipo}
                             onChange={(e) => atualizarItem(bIndex, iIndex, 'tipo', e.target.value)}
                             className="select-tipo"
-                            style={{ flex: 1, padding: '0.6rem', border: '1px solid #cbd5e1', borderRadius: '6px', minWidth: '150px' }}
+                            style={{ flex: 1, padding: '0.6rem', border: '1px solid #cbd5e1', borderRadius: '6px', minWidth: '140px', boxSizing: 'border-box' }}
                           >
                             <option value="booleano">Sim / Não (Conformidade)</option>
                             <option value="texto">Texto Livre (Aberta)</option>
@@ -510,7 +510,7 @@ export default function CadastroChecklist() {
                       </button>
                     </div>
 
-                    <div className="upload-item-container" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '0.5rem', paddingLeft: '2rem' }}>
+                    <div className="upload-item-container" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '0.5rem', paddingLeft: window.innerWidth < 600 ? '0' : '2rem' }}>
                       <label htmlFor={`file-input-${bIndex}-${iIndex}`} style={{ cursor: 'pointer', alignSelf: 'flex-start', backgroundColor: '#e2e8f0', padding: '0.6rem 1rem', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 'bold', color: '#334155', border: '1px solid #cbd5e1' }}>
                         📷 {item.imagem ? 'Trocar Padrão Visual' : 'Adicionar Padrão Visual (Foto)'}
                       </label>
@@ -566,7 +566,7 @@ export default function CadastroChecklist() {
                   </div>
                 ))}
                 
-                <button type="button" onClick={() => adicionarItem(bIndex)} style={{ marginTop: '0.5rem', background: '#f0f9ff', border: '2px dashed #0284c7', color: '#0284c7', padding: '12px', width: '100%', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s' }}>
+                <button type="button" onClick={() => adicionarItem(bIndex)} style={{ marginTop: '0.5rem', background: '#f0f9ff', border: '2px dashed #0284c7', color: '#0284c7', padding: '12px', width: '100%', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s', boxSizing: 'border-box' }}>
                   + Adicionar Pergunta nesta Etapa
                 </button>
               </div>
@@ -584,29 +584,27 @@ export default function CadastroChecklist() {
         </form>
       </div>
 
-      {/* ======================================================= */}
       {/* BOTÃO FLUTUANTE (FAB) PARA ADICIONAR ETAPA SEMPRE À VISTA */}
-      {/* ======================================================= */}
       <button 
         type="button" 
         onClick={adicionarBloco} 
         style={{
           position: 'fixed',
-          bottom: '30px',
-          right: '30px',
+          bottom: '20px',
+          right: '20px',
           backgroundColor: '#10b981',
           color: 'white',
           border: 'none',
           borderRadius: '50px',
-          padding: '14px 22px',
-          fontSize: '1rem',
+          padding: '12px 18px',
+          fontSize: '0.9rem',
           fontWeight: 'bold',
           cursor: 'pointer',
           boxShadow: '0 6px 20px rgba(16, 185, 129, 0.4)',
           zIndex: 1000,
           display: 'flex',
           alignItems: 'center',
-          gap: '8px',
+          gap: '6px',
           transition: 'transform 0.2s'
         }}
         title="Adicionar Nova Etapa"
@@ -616,10 +614,10 @@ export default function CadastroChecklist() {
         <span>➕</span> Adicionar Etapa
       </button>
 
-      {/* MODAIS (MANTIDOS E PADRONIZADOS) */}
+      {/* MODAL CRIAR SETOR */}
       {modalSetor.visivel && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '480px', width: '90%', textAlign: 'left' }}>
+          <div className="modal-content" style={{ maxWidth: '480px', width: '90%', textAlign: 'left', boxSizing: 'border-box' }}>
             <h3 style={{ marginBottom: '15px', color: '#1e293b' }}>Novo Setor</h3>
             
             <div className="input-group" style={{ marginBottom: '15px' }}>
@@ -649,9 +647,9 @@ export default function CadastroChecklist() {
 
                   return (
                     <div key={nomePai} style={{ flexShrink: 0, border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden', backgroundColor: 'white' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '8px 12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f1f5f9', padding: '8px 12px', flexWrap: 'wrap', gap: '6px' }}>
                         {pai ? (
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold', color: '#334155', fontSize: '0.85rem', flex: 1, margin: 0 }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold', color: '#334155', fontSize: '0.85rem', flex: 1, margin: 0, minWidth: '130px' }}>
                             <input type="radio" name="setorPaiModal" value={pai.id_setor} checked={String(modalSetor.id_setor_pai) === String(pai.id_setor)} onChange={(e) => setModalSetor({ ...modalSetor, id_setor_pai: e.target.value })} style={{ width: '15px', height: '15px', cursor: 'pointer', flexShrink: 0, margin: 0 }} />
                             {pai.nomeExibicao}
                           </label>
@@ -662,7 +660,7 @@ export default function CadastroChecklist() {
                       </div>
                       {isExpandido && filhos.map(filho => (
                         <div key={filho.id_setor} style={{ padding: '8px 12px', borderTop: '1px solid #cbd5e1' }}>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'normal', color: '#555', paddingLeft: '24px', fontSize: '0.85rem', margin: 0 }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'normal', color: '#555', paddingLeft: '24px', fontSize: '0.85rem', margin: 0, flexWrap: 'wrap' }}>
                             <input type="radio" name="setorPaiModal" value={filho.id_setor} checked={String(modalSetor.id_setor_pai) === String(filho.id_setor)} onChange={(e) => setModalSetor({ ...modalSetor, id_setor_pai: e.target.value })} style={{ width: '15px', height: '15px', cursor: 'pointer', flexShrink: 0, margin: 0 }} />
                             {filho.nomeExibicao.replace(`${nomePai} > `, '↳ ')} 
                           </label>
@@ -684,7 +682,7 @@ export default function CadastroChecklist() {
 
       {/* Modal Ampliar Imagem */}
       {imagemAmpliada && (
-        <div onClick={() => setImagemAmpliada(null)} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, cursor: 'pointer', padding: '2rem' }}>
+        <div onClick={() => setImagemAmpliada(null)} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, cursor: 'pointer', padding: '2rem', boxSizing: 'border-box' }}>
           <div style={{ position: 'relative', maxWidth: '90%', maxHeight: '90%' }} onClick={(e) => e.stopPropagation()}>
             <img src={imagemAmpliada} alt="Preview" style={{ maxWidth: '100%', maxHeight: '85vh', borderRadius: '8px', objectFit: 'contain', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', display: 'block', margin: '0 auto' }} />
             <button onClick={() => setImagemAmpliada(null)} style={{ position: 'absolute', top: '-15px', right: '-15px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '35px', height: '35px', fontSize: '1.2rem', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}>✕</button>
@@ -695,7 +693,7 @@ export default function CadastroChecklist() {
       {/* Modal de Avisos Globais */}
       {alerta.visivel && (
         <div className="modal-overlay">
-          <div className="modal-content">
+          <div className="modal-content" style={{ width: '90%', maxWidth: '400px', boxSizing: 'border-box' }}>
             {alerta.tipo === 'sucesso' ? '✅' : '⚠️'}
             <h3 className={alerta.tipo === 'erro' ? 'texto-erro' : 'texto-sucesso'}>{alerta.titulo}</h3>
             <p>{alerta.mensagem}</p>

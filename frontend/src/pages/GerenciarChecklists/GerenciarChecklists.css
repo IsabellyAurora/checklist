@@ -1,240 +1,502 @@
+/* ========================================================= */
+/* CONTAINER E CARTÃO PRINCIPAL                              */
+/* ========================================================= */
 .gerenciar-container {
-  min-height: 100vh;
-  background-color: #f5f5f5;
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding: 2rem;
+  min-height: 100vh;
+  background-color: #f1f5f9;
+  padding: 2rem 1rem;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
 .gerenciar-card {
-  background: white;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
   padding: 2.5rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   width: 100%;
-  max-width: 800px; /* Alargado para comportar a tabela */
+  box-sizing: border-box;
 }
 
-.gerenciar-card h2 { color: #333; margin-bottom: 0.5rem; }
-.gerenciar-card p { color: #666; margin-bottom: 2rem; font-size: 0.9rem; }
+.gerenciar-card h2 {
+  margin-top: 0;
+  color: #1e293b;
+  font-size: 1.6rem;
+  margin-bottom: 0.5rem;
+}
 
-/* Busca */
-.busca-form {
-  display: flex;
-  gap: 1rem;
+.gerenciar-card p {
+  color: #64748b;
+  font-size: 0.95rem;
   margin-bottom: 1.5rem;
 }
-.input-busca {
-  flex: 1;
-  padding: 0.75rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 1rem;
-}
-.input-busca:focus { outline: none; border-color: rgb(214, 127, 13); }
-.btn-buscar {
-  padding: 0.75rem 1.5rem;
-  background-color: rgb(214, 127, 13);
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 1rem;
-  cursor: pointer;
-}
-.btn-buscar:hover { opacity: 0.9; }
 
-/* Detalhes do Checklist */
-.checklist-detalhes {
-  background-color: #f9f9f9;
-  border: 1px solid #e0e0e0;
-  padding: 1.5rem;
-  border-radius: 6px;
-  margin-bottom: 2rem;
-}
-.status-badge { margin-bottom: 1rem; font-weight: bold; }
-.status-badge .ativo { color: #2e7d32; }
-.status-badge .inativo { color: #d32f2f; }
-
-.titulo-view-group, .titulo-edit-group {
-  display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;
-}
-.titulo-view-group h3 { margin: 0; color: #333; }
-.btn-editar-titulo { background: none; border: none; color: rgb(214, 127, 13); cursor: pointer; text-decoration: underline; }
-.input-editar-titulo { flex: 1; padding: 0.75rem; border: 1px solid #ccc; border-radius: 4px; }
-.btn-salvar-titulo { background-color: rgb(214, 127, 13); color: white; border: none; padding: 0.75rem 1rem; border-radius: 4px; cursor: pointer; }
-.btn-cancelar { background-color: white; border: 1px solid #ccc; padding: 0.75rem 1rem; border-radius: 4px; cursor: pointer; }
-
-.itens-lista ul { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
-.itens-lista li { padding: 0.75rem; border: 1px solid #e0e0e0; background-color: white; border-radius: 4px; color: #555; }
-
-.botoes-acao-gerenciar { display: flex; justify-content: flex-end; margin-top: 1rem; }
-.btn-inativar { background-color: white; color: #d32f2f; border: 1px solid #d32f2f; padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer; }
-.btn-inativar:hover:not(:disabled) { background-color: #d32f2f; color: white; }
-.btn-inativar:disabled { border-color: #ccc; color: #999; cursor: not-allowed; }
-
-/* Divisor */
-.divisor { border: 0; height: 1px; background-color: #e0e0e0; margin: 2rem 0; }
-
-/* Tabela e Filtros */
-.filtros-container { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
-.select-filtro { padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; min-width: 150px; }
-
-.tabela-container { overflow-x: auto; margin-bottom: 1.5rem; border-radius: 4px; border: 1px solid #eee; }
-.tabela-checklists { width: 100%; border-collapse: collapse; text-align: left; }
-.tabela-checklists th, .tabela-checklists td { padding: 1rem; border-bottom: 1px solid #e0e0e0; font-size: 0.9rem;}
-.tabela-checklists th { background-color: #f9f9f9; color: #555; font-weight: 600; }
-.col-id { color: rgb(214, 127, 13); font-weight: bold; }
-.tabela-vazia { text-align: center; padding: 2rem !important; color: #777; }
-
-.btn-ver-detalhes { background: none; border: 1px solid rgb(214, 127, 13); color: rgb(214, 127, 13); padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
-.btn-ver-detalhes:hover { background-color: rgba(214, 127, 13, 0.1); }
-
-/* Paginação */
-.paginacao-container { display: flex; justify-content: space-between; align-items: center; padding: 1rem; background-color: #f9f9f9; border-radius: 6px; }
-.btn-paginacao { background-color: white; border: 1px solid #ccc; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; color: #333; }
-.btn-paginacao:hover:not(:disabled) { border-color: rgb(214, 127, 13); color: rgb(214, 127, 13); }
-.btn-paginacao:disabled { background-color: #f0f0f0; color: #aaa; cursor: not-allowed; }
-.indicador-pagina { font-weight: bold; color: #555; font-size: 0.9rem; }
-
-/* Botão Voltar */
-.btn-voltar-home { width: 100%; padding: 0.75rem; background-color: white; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; margin-top: 1rem; font-size: 1rem; }
-.btn-voltar-home:hover { background-color: #f0f0f0; }
-/* ==========================================================
-   ESTILOS PARA A EDIÇÃO COMPLETA DE CHECKLISTS E ITENS
-   ================================================---------- */
-
-.bloco-edicao-completa {
-  background-color: #f9fbfd;
-  border: 1px solid #e1e8ed;
-  border-radius: 8px;
-  padding: 20px;
-  margin-top: 15px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-
-.bloco-edicao-completa h3 {
-  margin-top: 0;
-  margin-bottom: 15px;
-  color: #2c3e50;
-  font-size: 1.2rem;
-  border-bottom: 2px solid #eaeaea;
-  padding-bottom: 8px;
-}
-
-.form-group-edicao {
-  margin-bottom: 15px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.form-group-edicao label {
-  font-weight: 600;
-  color: #34495e;
-  font-size: 0.9rem;
-}
-
-.itens-edicao-secao {
-  margin-top: 20px;
-  border-top: 1px dashed #cbd5e1;
-  padding-top: 15px;
-}
-
-.itens-edicao-secao h4 {
-  color: #475569;
-  font-size: 1rem;
-  margin-bottom: 12px;
-}
-
-/* Linha individual de cada pergunta */
-.item-linha-edicao {
+/* ========================================================= */
+/* FORMULÁRIO DE BUSCA POR ID                                */
+/* ========================================================= */
+.busca-form {
   display: flex;
   gap: 10px;
-  margin-bottom: 12px;
-  align-items: center;
-  background: #ffffff;
-  padding: 10px;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  transition: all 0.2s ease;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
 }
 
-.item-linha-edicao:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.item-linha-edicao span {
-  font-weight: bold;
-  color: #64748b;
-  min-width: 25px;
-}
-
-.item-linha-edicao input[type="text"] {
-  flex: 2;
-  padding: 8px 12px;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  font-size: 0.9rem;
-}
-
-.item-linha-edicao select {
+.input-busca {
   flex: 1;
-  padding: 8px;
+  min-width: 200px;
+  padding: 10px 14px;
   border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  background-color: #fff;
-  font-size: 0.9rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  outline: none;
+  background-color: #f8fafc;
 }
 
-.item-linha-edicao label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.85rem;
-  color: #475569;
+.input-busca:focus {
+  border-color: #0284c7;
+  background-color: #ffffff;
+}
+
+.btn-buscar {
+  background-color: #0284c7;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: bold;
   cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-buscar:hover {
+  background-color: #0284c7;
+}
+
+/* ========================================================= */
+/* DETALHES E EDIÇÃO DO CHECKLIST                            */
+/* ========================================================= */
+.checklist-detalhes {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.status-badge {
+  font-size: 0.9rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+
+.status-badge .ativo {
+  color: #16a34a;
+  background-color: #dcfce7;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.status-badge .inativo {
+  color: #dc2626;
+  background-color: #fee2e2;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.titulo-view-group {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.titulo-view-group h3 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 1.25rem;
+  word-break: break-word;
+}
+
+.btn-editar-titulo {
+  background-color: #f59e0b;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 0.85rem;
   white-space: nowrap;
 }
 
-/* Botões específicos de edição */
-.btn-remover-item {
-  background-color: #fee2e2;
-  color: #dc2626;
-  border: 1px solid #fca5a5;
-  padding: 6px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: background 0.2s;
+.btn-editar-titulo:hover {
+  background-color: #d97706;
 }
 
-.btn-remover-item:hover {
-  background-color: #f87171;
-  color: #fff;
+.bloco-edicao-completa {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-group-edicao {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group-edicao label {
+  font-weight: bold;
+  color: #334155;
+  font-size: 0.9rem;
+}
+
+.input-editar-titulo {
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ========================================================= */
+/* ITENS DE VERIFICAÇÃO NA EDIÇÃO / VISUALIZAÇÃO             */
+/* ========================================================= */
+.itens-edicao-secao, .itens-lista {
+  margin-top: 1.5rem;
+  border-top: 1px dashed #cbd5e1;
+  padding-top: 1rem;
+}
+
+.item-linha-edicao {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-remover-item {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1rem;
 }
 
 .btn-adicionar-item {
-  background-color: #f1f5f9;
-  color: #0f172a;
+  background-color: #e2e8f0;
+  color: #334155;
   border: 1px dashed #94a3b8;
-  padding: 8px 14px;
+  padding: 8px 12px;
   border-radius: 6px;
+  font-weight: bold;
   cursor: pointer;
-  font-weight: 600;
   width: 100%;
-  text-align: center;
-  transition: background 0.2s, border-color 0.2s;
+  margin-top: 0.5rem;
+  transition: background-color 0.2s;
 }
 
 .btn-adicionar-item:hover {
-  background-color: #e2e8f0;
-  border-color: #64748b;
+  background-color: #cbd5e1;
 }
 
 .botoes-edicao-acao {
   display: flex;
   gap: 10px;
-  margin-top: 20px;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.btn-salvar-titulo {
+  flex: 1;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  min-width: 130px;
+}
+
+.btn-cancelar {
+  flex: 1;
+  background-color: #64748b;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  min-width: 100px;
+}
+
+.botoes-acao-gerenciar {
+  margin-top: 1.5rem;
+}
+
+.btn-inativar {
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.btn-inativar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ========================================================= */
+/* TABELA DA LISTAGEM GERAL                                  */
+/* ========================================================= */
+.divisor {
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  margin: 2rem 0;
+}
+
+.filtros-container {
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.select-filtro {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  font-size: 0.95rem;
+  background-color: #f8fafc;
+  color: #334155;
+  outline: none;
+  cursor: pointer;
+  flex: 1;
+  max-width: 300px;
+}
+
+.tabela-container {
+  overflow-x: auto;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  background-color: #ffffff;
+}
+
+.tabela-checklists {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  min-width: 600px;
+}
+
+.tabela-checklists th {
+  background-color: #f8fafc;
+  color: #475569;
+  padding: 12px 15px;
+  border-bottom: 2px solid #e2e8f0;
+  font-weight: bold;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tabela-checklists td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: 0.95rem;
+  vertical-align: middle;
+}
+
+.tabela-checklists tbody tr:hover {
+  background-color: #f1f5f9;
+}
+
+.col-id {
+  font-weight: bold;
+  color: #0284c7;
+}
+
+.tabela-vazia {
+  text-align: center;
+  padding: 2rem !important;
+  color: #64748b;
+  font-style: italic;
+}
+
+.btn-ver-detalhes {
+  background-color: #0284c7;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.btn-ver-detalhes:hover {
+  background-color: #0369a1;
+}
+
+/* ========================================================= */
+/* PAGINAÇÃO E BOTÃO VOLTAR                                  */
+/* ========================================================= */
+.paginacao-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.btn-paginacao {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-weight: bold;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-paginacao:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-paginacao:not(:disabled):hover {
+  background-color: #f1f5f9;
+}
+
+.indicador-pagina {
+  font-size: 0.9rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.btn-voltar-home {
+  width: 100%;
+  padding: 0.9rem;
+  background-color: #ffffff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-voltar-home:hover {
+  background-color: #f8fafc;
+  border-color: #94a3b8;
+}
+
+/* ========================================================= */
+/* RESPONSIVIDADE PARA CELULARES (TELA < 768px)              */
+/* ========================================================= */
+@media (max-width: 768px) {
+  .gerenciar-container {
+    padding: 1rem 0.5rem;
+  }
+  
+  .gerenciar-card {
+    padding: 1.25rem;
+  }
+
+  .gerenciar-card h2 {
+    font-size: 1.35rem;
+  }
+
+  .busca-form {
+    flex-direction: column;
+  }
+
+  .btn-buscar {
+    width: 100%;
+  }
+
+  /* Transforma a tabela da listagem em cards no celular */
+  .tabela-checklists, .tabela-checklists th, .tabela-checklists td, .tabela-checklists tr {
+    display: block;
+  }
+
+  .tabela-container {
+    border: none;
+    background: transparent;
+    overflow-x: visible;
+  }
+
+  .tabela-checklists {
+    min-width: 100%;
+  }
+
+  .tabela-checklists thead {
+    display: none;
+  }
+
+  .tabela-checklists tr {
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    padding: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  }
+
+  .tabela-checklists td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 4px;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: right;
+  }
+
+  .tabela-checklists td:last-child {
+    border-bottom: none;
+    justify-content: flex-end;
+  }
+
+  .tabela-checklists td::before {
+    content: attr(data-label);
+    font-weight: bold;
+    color: #64748b;
+    text-align: left;
+    margin-right: 1rem;
+    font-size: 0.85rem;
+  }
+
+  .paginacao-container {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .btn-paginacao {
+    width: 100%;
+  }
+  
+  .indicador-pagina {
+    text-align: center;
+  }
 }

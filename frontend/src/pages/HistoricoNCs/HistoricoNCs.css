@@ -1,169 +1,181 @@
+/* ========================================================= */
+/* CONTAINER E CARTÃO PRINCIPAL                              */
+/* ========================================================= */
 .historico-nc-container {
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   min-height: 100vh;
-  background-color: #f4f6f9;
-  padding: 20px;
+  background-color: #f1f5f9;
+  padding: 2rem 1rem;
   box-sizing: border-box;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
 .historico-nc-card {
-  background: #ffffff;
-  padding: 30px;
+  background-color: #ffffff;
   border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+  padding: 2.5rem;
   width: 100%;
-  max-width: 1000px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  max-width: 1100px;
+  box-sizing: border-box;
 }
 
 .historico-nc-card h2 {
+  margin-top: 0;
   color: #1e293b;
-  font-size: 1.5rem;
-  margin-bottom: 0;
-  border-bottom: 2px solid #e2e8f0;
-  padding-bottom: 10px;
+  font-size: 1.6rem;
+  margin-bottom: 0.5rem;
 }
 
 .historico-nc-card p {
   color: #64748b;
   font-size: 0.95rem;
-  margin-top: -10px;
+  margin-bottom: 1.5rem;
 }
 
+/* ========================================================= */
+/* FILTROS                                                   */
+/* ========================================================= */
 .filtros-container {
+  margin-bottom: 1.5rem;
   display: flex;
   align-items: center;
   gap: 10px;
-  background-color: #f8fafc;
-  padding: 15px;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-}
-
-.filtros-container label {
-  font-weight: 600;
-  color: #475569;
 }
 
 .select-filtro {
   padding: 8px 12px;
-  border: 1px solid #cbd5e1;
   border-radius: 6px;
-  font-size: 0.9rem;
+  border: 1px solid #cbd5e1;
+  font-size: 0.95rem;
+  background-color: #f8fafc;
   color: #334155;
-  background-color: white;
   outline: none;
   cursor: pointer;
-  min-width: 250px;
+  flex: 1;
+  max-width: 300px;
 }
 
-.select-filtro:focus {
-  border-color: #f57c00;
-}
-
+/* ========================================================= */
+/* TABELA DE DADOS                                           */
+/* ========================================================= */
 .tabela-container {
   overflow-x: auto;
+  border: 1px solid #cbd5e1;
   border-radius: 8px;
-  border: 1px solid #e2e8f0;
+  margin-bottom: 1.5rem;
+  background-color: #ffffff;
 }
 
 .tabela-ncs {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
-  font-size: 0.9rem;
+  min-width: 700px;
 }
 
 .tabela-ncs th {
   background-color: #f8fafc;
-  color: #334155;
-  padding: 12px 16px;
-  font-weight: 600;
-  border-bottom: 1px solid #e2e8f0;
+  color: #475569;
+  padding: 12px 15px;
+  border-bottom: 2px solid #e2e8f0;
+  font-weight: bold;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .tabela-ncs td {
-  padding: 12px 16px;
+  padding: 12px 15px;
   border-bottom: 1px solid #e2e8f0;
-  color: #475569;
+  color: #334155;
+  font-size: 0.95rem;
   vertical-align: middle;
 }
 
-.tabela-ncs tr:hover {
-  background-color: #f8fafc;
+.tabela-ncs tbody tr:hover {
+  background-color: #f1f5f9;
 }
 
-.col-destaque strong {
-  color: #d32f2f; /* Destaca a OS em vermelho escuro */
+.col-destaque {
+  color: #0284c7 !important;
 }
 
-/* Badges de Status das Não Conformidades */
+.tabela-vazia {
+  text-align: center;
+  padding: 2rem !important;
+  color: #64748b;
+  font-style: italic;
+}
+
+/* ========================================================= */
+/* BADGES E BOTÕES DA TABELA                                 */
+/* ========================================================= */
 .badge-status-nc {
-  padding: 4px 10px;
+  padding: 6px 12px;
   border-radius: 6px;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: bold;
   display: inline-block;
+  text-align: center;
 }
 
 .badge-status-nc.pendente {
   background-color: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #fca5a5;
+  color: #dc2626;
 }
 
 .badge-status-nc.resolvido {
-  background-color: #d1fae5;
-  color: #065f46;
-  border: 1px solid #6ee7b7;
+  background-color: #dcfce7;
+  color: #16a34a;
 }
 
 .btn-resolver-nc {
-  background-color: #f57c00; /* Laranja do sistema */
-  color: #ffffff;
+  background-color: #f59e0b;
+  color: white;
   border: none;
   padding: 6px 12px;
   border-radius: 6px;
+  font-weight: bold;
   cursor: pointer;
-  font-weight: 600;
   font-size: 0.85rem;
-  transition: background 0.2s;
+  transition: background-color 0.2s;
 }
 
 .btn-resolver-nc:hover {
-  background-color: #e65100;
+  background-color: #d97706;
 }
 
+/* ========================================================= */
+/* PAGINAÇÃO E BOTÃO VOLTAR                                  */
+/* ========================================================= */
 .paginacao-container {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
-  gap: 15px;
-  margin-top: 10px;
+  margin-bottom: 1.5rem;
 }
 
 .btn-paginacao {
-  background-color: #e2e8f0;
-  color: #334155;
-  border: none;
-  padding: 8px 16px;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  padding: 8px 14px;
   border-radius: 6px;
+  font-weight: bold;
+  color: #334155;
   cursor: pointer;
-  font-weight: 600;
-  transition: background 0.2s;
-}
-
-.btn-paginacao:hover:not(:disabled) {
-  background-color: #cbd5e1;
+  transition: all 0.2s;
 }
 
 .btn-paginacao:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.btn-paginacao:not(:disabled):hover {
+  background-color: #f1f5f9;
 }
 
 .indicador-pagina {
@@ -173,20 +185,101 @@
 }
 
 .btn-voltar-home {
-  background-color: #475569;
-  color: #ffffff;
-  border: none;
-  padding: 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-  text-align: center;
-  transition: background 0.2s;
   width: 100%;
-  margin-top: 10px;
+  padding: 0.9rem;
+  background-color: #ffffff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
   font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
 .btn-voltar-home:hover {
-  background-color: #334155;
+  background-color: #f8fafc;
+  border-color: #94a3b8;
+}
+
+/* ========================================================= */
+/* RESPONSIVIDADE PARA CELULARES (TELA < 768px)              */
+/* ========================================================= */
+@media (max-width: 768px) {
+  .historico-nc-container {
+    padding: 1rem 0.5rem;
+  }
+  
+  .historico-nc-card {
+    padding: 1.25rem;
+  }
+
+  .historico-nc-card h2 {
+    font-size: 1.35rem;
+  }
+
+  /* Transforma a tabela em formato de blocos/cards empilhados no celular */
+  .tabela-ncs, .tabela-ncs th, .tabela-ncs td, .tabela-ncs tr {
+    display: block;
+  }
+
+  .tabela-container {
+    border: none;
+    background: transparent;
+    overflow-x: visible;
+  }
+
+  .tabela-ncs {
+    min-width: 100%;
+  }
+
+  .tabela-ncs thead {
+    display: none; /* Esconde o cabeçalho tradicional da tabela */
+  }
+
+  .tabela-ncs tr {
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    padding: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  }
+
+  .tabela-ncs td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 4px;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: right;
+  }
+
+  .tabela-ncs td:last-child {
+    border-bottom: none;
+  }
+
+  /* Cria os "rótulos" automáticos usando o atributo data-label */
+  .tabela-ncs td::before {
+    content: attr(data-label);
+    font-weight: bold;
+    color: #64748b;
+    text-align: left;
+    margin-right: 1rem;
+    font-size: 0.85rem;
+  }
+
+  .paginacao-container {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .btn-paginacao {
+    width: 100%;
+  }
+  
+  .indicador-pagina {
+    text-align: center;
+  }
 }
