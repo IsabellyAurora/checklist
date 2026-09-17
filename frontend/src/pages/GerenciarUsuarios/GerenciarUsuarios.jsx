@@ -328,7 +328,7 @@ export default function GerenciarUsuarios() {
 
                           <button 
                             style={{ 
-                              backgroundColor: isAtivo ? '#d32f2f' : '#2e7d32', 
+                              backgroundColor: isAtivo ? '#d67f0d' : '#2e7d32', 
                               color: 'white', 
                               border: 'none', 
                               padding: '0.5rem 1rem', 
