@@ -1,5 +1,6 @@
 const execucaoModel = require('../models/execucaoModel');
 const asyncHandler = require('../middlewares/asyncHandler');
+const { emitirEvento } = require('./eventosController');
 
 // NOVO: Disparado quando o usuário clica em "Iniciar" no tablet
 const iniciarExecucaoChecklist = asyncHandler(async (req, res) => {
@@ -12,11 +13,15 @@ const iniciarExecucaoChecklist = asyncHandler(async (req, res) => {
 
   try {
     const id_execucao = await execucaoModel.iniciarExecucao(id_checklist, id_usuario);
+    
+    // ⚡ GATILHO QUE FALTAVA: Avisa os outros tablets para esconderem este checklist
+    emitirEvento('ATUALIZACAO_PENDENCIAS', { mensagem: 'Checklist assumido por alguém.' });
+
     return res.status(201).json({
       success: true,
       data: { 
         id_execucao, 
-        mensagem: 'Execução iniciada. Checklist bloqueado para outros usuários.' 
+        mensagem: 'Execução iniciada ou retomada com sucesso.' 
       }
     });
   } catch (error) {
@@ -27,7 +32,6 @@ const iniciarExecucaoChecklist = asyncHandler(async (req, res) => {
   }
 });
 
-// NOVO: Disparado no final do Wizard, salva as respostas e conclui
 const finalizarExecucaoChecklist = asyncHandler(async (req, res) => {
   const { id_execucao } = req.params;
   const { respostas, ordem_servico } = req.body;
@@ -36,7 +40,6 @@ const finalizarExecucaoChecklist = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, error: 'As respostas são obrigatórias para finalizar.' });
   }
 
-  // Verifica se alguma resposta booleana indica Não Conformidade
   const temNC = respostas.some(r => 
     r.tipo === 'booleano' && (r.valor_resposta === 'false' || r.valor_resposta === 'Não' || r.valor_resposta === '0')
   );
@@ -45,6 +48,17 @@ const finalizarExecucaoChecklist = asyncHandler(async (req, res) => {
 
   await execucaoModel.finalizarExecucao(id_execucao, respostas, statusNC, ordem_servico);
   
+  // ⚡ GATILHOS DE TEMPO REAL ⚡
+
+  // 1. Se tem Não Conformidade, avisa os painéis dos Admins
+  if (temNC) {
+    emitirEvento('NOVA_NC', { mensagem: 'Nova Não Conformidade detectada.' });
+  }
+
+  // 2. Sempre avisa os Manutentores para atualizarem a lista de pendências
+  // (Pois a conclusão de um checklist hoje pode liberar as tarefas de amanhã)
+  emitirEvento('ATUALIZACAO_PENDENCIAS', { mensagem: 'Checklist concluído.' });
+
   return res.status(200).json({
     success: true,
     data: { 
@@ -143,9 +157,12 @@ const resolverPendenciaNC = asyncHandler(async (req, res) => {
 
   const resolvido = await execucaoModel.resolverNC(id, idAdmin, observacao);
   
-  if (!resolvido) {
+ if (!resolvido) {
     return res.status(404).json({ success: false, error: 'Execução não encontrada ou já resolvida.' });
   }
+
+  // ⚡ GATILHO DE TEMPO REAL ⚡
+  emitirEvento('NC_RESOLVIDA', { id_execucao: id });
 
   return res.status(200).json({ success: true, data: { mensagem: 'Não Conformidade resolvida com sucesso.' } });
 });
@@ -157,8 +174,12 @@ const descartarExecucao = asyncHandler(async (req, res) => {
   const cancelado = await execucaoModel.cancelarExecucao(id_execucao, id_usuario);
   
   if (!cancelado) {
-    return res.status(404).json({ success: false, error: 'Execução não encontrada ou você não tem permissão para cancelá-la.' });
+    return res.status(404).json({ success: false, error: 'Execução não encontrada.' });
   }
+
+  // ⚡ GATILHO DE TEMPO REAL ⚡
+  // Avisa os tablets que um checklist foi liberado/cancelado e voltou para a fila
+  emitirEvento('ATUALIZACAO_PENDENCIAS', { mensagem: 'Um checklist foi liberado.' });
 
   return res.status(200).json({ 
     success: true, 

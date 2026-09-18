@@ -569,6 +569,18 @@ export default function CadastroChecklist() {
                 <button type="button" onClick={() => adicionarItem(bIndex)} style={{ marginTop: '0.5rem', background: '#f0f9ff', border: '2px dashed #0284c7', color: '#0284c7', padding: '12px', width: '100%', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s', boxSizing: 'border-box' }}>
                   + Adicionar Pergunta nesta Etapa
                 </button>
+
+                {/* BOTÃO PARA ADICIONAR NOVA ETAPA NO FINAL DO PASSO ATUAL */}
+                <div style={{ marginTop: '1.5rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem', display: 'flex', justifyContent: 'flex-start' }}>
+                  <button 
+                    type="button" 
+                    onClick={adicionarBloco} 
+                    style={{ fontSize: '0.9rem', padding: '8px 16px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <span>➕</span> Adicionar Nova Etapa
+                  </button>
+                </div>
+
               </div>
             ))}
           </div>
@@ -583,36 +595,6 @@ export default function CadastroChecklist() {
           </div>
         </form>
       </div>
-
-      {/* BOTÃO FLUTUANTE (FAB) PARA ADICIONAR ETAPA SEMPRE À VISTA */}
-      <button 
-        type="button" 
-        onClick={adicionarBloco} 
-        style={{
-          position: 'fixed',
-          bottom: '20px',
-          right: '20px',
-          backgroundColor: '#10b981',
-          color: 'white',
-          border: 'none',
-          borderRadius: '50px',
-          padding: '12px 18px',
-          fontSize: '0.9rem',
-          fontWeight: 'bold',
-          cursor: 'pointer',
-          boxShadow: '0 6px 20px rgba(16, 185, 129, 0.4)',
-          zIndex: 1000,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          transition: 'transform 0.2s'
-        }}
-        title="Adicionar Nova Etapa"
-        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-      >
-        <span>➕</span> Adicionar Etapa
-      </button>
 
       {/* MODAL CRIAR SETOR */}
       {modalSetor.visivel && (

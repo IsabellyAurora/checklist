@@ -11,6 +11,7 @@ const checklistRoutes = require('./routes/checklistRoutes');
 const execucaoRoutes = require('./routes/execucaoRoutes');
 const setorRoutes = require('./routes/setorRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const eventoRoutes = require('./routes/eventoRoutes'); // Novo import
 const errorHandler = require('./middlewares/errorHandler');
 
 const app = express();
@@ -39,5 +40,6 @@ app.use('/api', checklistRoutes);
 app.use('/api', execucaoRoutes);
 app.use('/api', setorRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/eventos', eventoRoutes); // Nova rota para eventos SSE
 
 module.exports = app;

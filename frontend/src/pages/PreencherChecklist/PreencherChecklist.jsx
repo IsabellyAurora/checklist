@@ -154,7 +154,6 @@ export default function PreencherChecklist() {
 
   const progresso = calcularProgresso();
   
-  // Variáveis matemáticas para desenhar o círculo SVG
   const raioCirculo = 24;
   const circunferencia = 2 * Math.PI * raioCirculo;
   const offsetCirculo = circunferencia - (progresso / 100) * circunferencia;
@@ -538,12 +537,12 @@ export default function PreencherChecklist() {
         )}
 
         {/* ======================================================= */}
-        {/* CABEÇALHO STICKY (ACOMPANHA O SCROLL COM A PORCENTAGEM) */}
+        {/* CABEÇALHO STICKY CORRIGIDO (ESPAÇO EXTRA PARA O HEADER GLOBAL) */}
         {/* ======================================================= */}
         {idExecucao && (
           <div style={{ 
             position: 'sticky', 
-            top: '15px', 
+            top: '80px', /* Aumentado para não sumir atrás do Header global */
             zIndex: 50, 
             display: 'flex', 
             justifyContent: 'space-between', 

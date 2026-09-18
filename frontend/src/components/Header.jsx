@@ -37,20 +37,40 @@ export default function Header() {
   if (!user || location.pathname === '/') return null;
 
   return (
-    <header className="global-header">
+    <header className="global-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+      
       {/* Clicar no título volta para a Home */}
-      <h1 onClick={() => navigate('/home')} style={{ cursor: 'pointer' }}>
+      <h1 onClick={() => navigate('/home')} style={{ cursor: 'pointer', margin: 0, whiteSpace: 'nowrap', fontSize: '1.2rem' }}>
         Painel de Checklists
       </h1>
       
-      <div className="user-info">
-        <span>Olá, <strong>{user.nome}</strong></span>
+      {/* Contêiner do usuário com Flexbox e Wrap para não estourar a tela */}
+      <div className="user-info" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end', minWidth: 0 }}>
         
-        <button onClick={() => navigate('/meu-perfil')} className="perfil-button">
-          Meu Perfil
-        </button>
+        <span 
+          style={{ 
+            maxWidth: '130px', /* No celular, nomes muito longos são cortados com ... */
+            whiteSpace: 'nowrap', 
+            overflow: 'hidden', 
+            textOverflow: 'ellipsis',
+            display: 'inline-block'
+          }}
+          title={user.nome} /* Se o usuário colocar o mouse em cima, vê o nome completo */
+        >
+          Olá, <strong>{user.nome}</strong>
+        </span>
         
-        <button onClick={handleLogout} className="logout-button">Sair</button>
+        {/* Agrupa os botões para que eles sempre fiquem juntos */}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={() => navigate('/meu-perfil')} className="perfil-button" style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
+            Meu Perfil
+          </button>
+          
+          <button onClick={handleLogout} className="logout-button" style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
+            Sair
+          </button>
+        </div>
+        
       </div>
     </header>
   );

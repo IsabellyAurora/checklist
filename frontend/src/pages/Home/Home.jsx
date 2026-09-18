@@ -46,14 +46,63 @@ export default function Home() {
     carregarSetores(); 
     const isAdmin = user.setores?.some(s => String(s).toLowerCase() === 'admin');
     
+    // 1. Faz a primeira busca imediatamente ao carregar a tela
     if (isAdmin) {
       buscarNaoConformidadesNoFrontend();
     } else {
-      // POLLING DE PENDÊNCIAS AGENDADAS (SÓ PARA MANUTENTORES COMUNS)
       buscarPendentesHoje();
-      const intervalId = setInterval(buscarPendentesHoje, 30000); // Consulta a cada 30 segundos
-      return () => clearInterval(intervalId); // Limpa o ciclo ao sair da página
     }
+
+    // ==========================================
+    // 2. CONEXÃO SERVER-SENT EVENTS (SSE)
+    // ==========================================
+    const token = localStorage.getItem('accessToken');
+    
+    // O Vite usa import.meta.env. Fallback para localhost:3000 caso a variável não exista.
+const hostAtual = window.location.hostname; 
+const apiUrl = import.meta.env.VITE_API_URL || `http://${hostAtual}:3000`; 
+
+const sseUrl = `${apiUrl}/api/eventos/stream?token=${token}`;
+    
+    const eventSource = new EventSource(sseUrl);
+
+    eventSource.onopen = () => {
+      console.log('🟢 SSE conectado para receber notificações em tempo real.');
+    };
+
+eventSource.onmessage = (event) => {
+      try {
+        // Tenta converter os dados que chegaram do servidor
+        const dados = JSON.parse(event.data);
+        console.log("🔔 Chegou evento do servidor:", dados.evento);
+        
+        // Verifica se é um dos três gatilhos que criamos no Backend
+        if (
+          dados.evento === 'ATUALIZACAO_PENDENCIAS' || 
+          dados.evento === 'NOVA_NC' || 
+          dados.evento === 'NC_RESOLVIDA'
+        ) {
+          // BURACO NEGRO DO REACT RESOLVIDO:
+          // Executa ambas as buscas simultaneamente. 
+          // Não usamos o "if (isAdmin)" aqui dentro para evitar que o cache do React 
+          // use uma variável desatualizada. Se o usuário for um Operador, o backend 
+          // bloqueia silenciosamente a busca de NCs. Se for Admin, bloqueia as pendências comuns.
+          buscarPendentesHoje();
+          buscarNaoConformidadesNoFrontend();
+        }
+      } catch (error) {
+        console.error("🔴 Erro ao processar mensagem do SSE:", error);
+      }
+    };
+    eventSource.onerror = (error) => {
+      console.error('🔴 Erro na conexão SSE. Verifique se o backend está rodando e a URL está correta.', error);
+      // Opcional: O EventSource já tenta reconectar automaticamente a cada 3 segundos por padrão
+    };
+
+    // 3. Limpeza: fecha o túnel ao sair da tela
+    return () => {
+      eventSource.close();
+    };
   }, [user]);
 
   // ==========================================
@@ -64,7 +113,6 @@ export default function Home() {
       const res = await fetchWithAuth('/api/checklists/pendentes/hoje');
       if (res.ok) {
         const json = await res.json();
-        // BLINDAGEM: Lê os dados corretamente mesmo se o backend mandar um Array direto
         const dadosExtraidos = Array.isArray(json) ? json : (json.data || []);
         setPendentesHoje(dadosExtraidos);
       }
@@ -73,9 +121,41 @@ export default function Home() {
     }
   };
 
-  const iniciarPendente = (idChecklist) => {
-    // Leva para a tela de preencher com state indicando que quer iniciar esse checklist
-    navigate('/preencher-checklist', { state: { autoIniciarId: idChecklist } });
+  const iniciarPendente = async (idChecklist) => {
+    try {
+      const res = await fetchWithAuth('/api/execucoes/iniciar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_checklist: idChecklist })
+      });
+
+      if (res.ok) {
+        // Sucesso: Vaga garantida no banco, agora sim muda de tela
+        const json = await res.json();
+        navigate('/preencher-checklist', { 
+          state: { autoIniciarId: idChecklist, idExecucao: json.data.id_execucao } 
+        });
+      } else {
+        // Barrado: O erro 409 (ou a mensagem de erro) será disparado pela colisão
+        const erroJson = await res.json().catch(() => ({}));
+        
+        if (res.status === 409 || erroJson.error?.includes('já está sendo executado')) {
+          setModalAviso({ 
+            visivel: true, 
+            tipo: 'erro', 
+            titulo: 'Tarefa Assumida!', 
+            mensagem: 'Outro operador foi mais rápido e assumiu este checklist.' 
+          });
+          // Remove a tarefa da tela deste tablet instantaneamente
+          buscarPendentesHoje();
+        } else {
+          setModalAviso({ visivel: true, tipo: 'erro', titulo: 'Erro', mensagem: erroJson.error || 'Falha ao iniciar.' });
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      setModalAviso({ visivel: true, tipo: 'erro', titulo: 'Erro', mensagem: 'Falha na comunicação.' });
+    }
   };
 
   // ==========================================
@@ -350,16 +430,16 @@ export default function Home() {
       {!isAdmin && pendentesHoje.length > 0 && (
         <>
           {!modalPendentes && (
-            <button className="icone-notificacao-flutuante" onClick={() => setModalPendentes(true)} style={{ position: 'fixed', bottom: '30px', right: '30px', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '50%', width: '60px', height: '60px', fontSize: '24px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(245, 158, 11, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, animation: 'pulse 2s infinite' }}>
-              📅<span style={{ position: 'absolute', top: '-5px', right: '-5px', backgroundColor: 'white', color: '#f59e0b', fontSize: '12px', fontWeight: 'bold', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '2px solid #f59e0b' }}>{pendentesHoje.length}</span>
+            <button className="icone-notificacao-flutuante" onClick={() => setModalPendentes(true)} style={{ position: 'fixed', bottom: '30px', right: '30px', backgroundColor: '#f50b0b', color: 'white', border: 'none', borderRadius: '50%', width: '60px', height: '60px', fontSize: '24px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(245, 158, 11, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, animation: 'pulse 2s infinite' }}>
+              ⚠️<span style={{ position: 'absolute', top: '-5px', right: '-5px', backgroundColor: 'white', color: '#f5260b', fontSize: '12px', fontWeight: 'bold', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '2px solid #f59e0b' }}>{pendentesHoje.length}</span>
             </button>
-          )}
+          )}  
 
           {/* Painel no Canto Inferior Direito (estilo Notificação) */}
           {modalPendentes && (
             <div style={{ position: 'fixed', bottom: '20px', right: '20px', width: '350px', maxHeight: '80vh', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', zIndex: 1000, border: '1px solid #e2e8f0' }}>
-              <div style={{ backgroundColor: '#f59e0b', color: 'white', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '11px 11px 0 0' }}>
-                <strong style={{ fontSize: '16px' }}>📅 Agendados Hoje ({pendentesHoje.length})</strong>
+              <div style={{ backgroundColor: '#f52e0b', color: 'white', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '11px 11px 0 0' }}>
+                <strong style={{ fontSize: '16px' }}>⚠️ Agendados Hoje ({pendentesHoje.length})</strong>
                 <button onClick={() => setModalPendentes(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '18px', cursor: 'pointer', fontWeight: 'bold' }}>✕</button>
               </div>
               <div style={{ padding: '15px', overflowY: 'auto', maxHeight: 'calc(80vh - 60px)', backgroundColor: '#f8fafc', borderRadius: '0 0 11px 11px' }}>

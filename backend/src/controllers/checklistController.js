@@ -1,8 +1,10 @@
 const checklistModel = require('../models/checklistModel');
 const asyncHandler = require('../middlewares/asyncHandler'); 
 
+// ⚡ IMPORTAÇÃO DO CONTROLADOR DE EVENTOS (FALTAVA AQUI)
+const { emitirEvento } = require('./eventosController');
+
 const criarChecklist = asyncHandler(async (req, res) => {
-  // Recebendo os novos campos de periodicidade
   const { titulo, id_setor, tipo_agendamento, intervalo_dias, data_especifica, itens } = req.body;
 
   if (!titulo || !id_setor || !itens || !Array.isArray(itens) || itens.length === 0) {
@@ -27,13 +29,15 @@ const criarChecklist = asyncHandler(async (req, res) => {
     itens
   );
 
+  // ⚡ GATILHO DE TEMPO REAL: Avisa a equipe que há um novo checklist agendado
+  emitirEvento('ATUALIZACAO_PENDENCIAS', { mensagem: 'Novo checklist disponível.' });
+
   return res.status(201).json({
     success: true,
     data: { mensagem: 'Checklist criado com sucesso!', checklist: checklistSalvo },
   });
 });
 
-// NOVO: Busca apenas os checklists pendentes do dia para o Pop-up do tablet
 const listarPendentesDia = asyncHandler(async (req, res) => {
   const isAdmin = req.usuario?.setores?.some(s => String(s).toLowerCase() === 'admin');
   const setoresUsuario = isAdmin ? null : (req.usuario?.setores_ids || []); 
@@ -100,6 +104,9 @@ const atualizarChecklist = asyncHandler(async (req, res) => {
     idUsuario
   );
 
+  // ⚡ GATILHO DE TEMPO REAL: Se mudou a data, pode ter gerado/removido pendência
+  emitirEvento('ATUALIZACAO_PENDENCIAS', { mensagem: 'Checklist atualizado.' });
+
   return res.status(200).json({
     success: true,
     data: {
@@ -117,6 +124,9 @@ const excluirChecklist = asyncHandler(async (req, res) => {
   if (!checklistInativado) {
     return res.status(404).json({ success: false, error: 'Checklist não encontrado.' });
   }
+
+  // ⚡ GATILHO DE TEMPO REAL: Força sumir da tela de pendências se for excluído
+  emitirEvento('ATUALIZACAO_PENDENCIAS', { mensagem: 'Checklist inativado.' });
 
   return res.status(200).json({
     success: true,

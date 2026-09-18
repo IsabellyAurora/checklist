@@ -1,33 +1,40 @@
 const pool = require('../config/db');
 
 const iniciarExecucao = async (idChecklist, idUsuario) => {
-  // Busca se há execução em andamento nas últimas 4 horas (evita travar por execuções zumbis antigas)
-  const emAndamento = await pool.query(
-    `SELECT id_execucao, id_usuario FROM execucao 
+  // 1. Verifica se o PRÓPRIO usuário já tinha iniciado e deixou pela metade
+  const minhaExecucao = await pool.query(
+    `SELECT id_execucao FROM execucao 
      WHERE id_checklist = $1 
+     AND id_usuario = $2 
      AND status = 'EM_ANDAMENTO'
-     AND data_inicio >= NOW() - INTERVAL '4 hours'`, 
-    [idChecklist]
-  );
-
-  if (emAndamento.rows.length > 0) {
-    const execAtual = emAndamento.rows[0];
-    
-    // Se o próprio usuário logado já tinha iniciado esse checklist, devolve o ID para ele continuar
-    if (execAtual.id_usuario === idUsuario) {
-      return execAtual.id_execucao;
-    }
-    
-    // Se foi outro usuário, bloqueia o acesso
-    throw new Error("Este checklist já está sendo executado por outro manutentor.");
-  }
-
-  // Se estiver livre, cria uma nova execução
-  const novaExecucao = await pool.query(
-    `INSERT INTO execucao (id_checklist, id_usuario, data_inicio, status) 
-     VALUES ($1, $2, CURRENT_TIMESTAMP, 'EM_ANDAMENTO') RETURNING id_execucao`,
+     AND data_inicio >= NOW() - INTERVAL '6 hours'`,
     [idChecklist, idUsuario]
   );
+
+  // Devolve o ID para ele continuar de onde parou
+  if (minhaExecucao.rows.length > 0) {
+    return minhaExecucao.rows[0].id_execucao;
+  }
+
+  // 2. INSERÇÃO ATÔMICA: Tenta criar uma vaga nova para o usuário.
+  // O 'WHERE NOT EXISTS' garante que o INSERT falhe se alguém tiver pego a vaga no mesmo milissegundo.
+  const novaExecucao = await pool.query(
+    `INSERT INTO execucao (id_checklist, id_usuario, data_inicio, status) 
+     SELECT $1, $2, CURRENT_TIMESTAMP, 'EM_ANDAMENTO'
+     WHERE NOT EXISTS (
+       SELECT 1 FROM execucao 
+       WHERE id_checklist = $1 
+       AND status = 'EM_ANDAMENTO'
+       AND data_inicio >= NOW() - INTERVAL '6 hours'
+     )
+     RETURNING id_execucao`,
+    [idChecklist, idUsuario]
+  );
+  
+  // Se retornou vazio, significa que a trava do WHERE NOT EXISTS bloqueou a inserção
+  if (novaExecucao.rows.length === 0) {
+    throw new Error("Este checklist já está sendo executado por outro manutentor.");
+  }
   
   return novaExecucao.rows[0].id_execucao;
 };
